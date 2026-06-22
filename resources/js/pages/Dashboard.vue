@@ -41,6 +41,14 @@ const page = usePage();
 const user = computed(() => page.props.auth.user as { name: string; role?: string });
 const role = computed(() => user.value?.role ?? '');
 
+const roleLabels: Record<string, string> = {
+    rumah_tangga: 'Rumah Tangga',
+    pengepul: 'Pengepul',
+    industri: 'Industri Pengolah',
+};
+const roleLabel = computed(() => roleLabels[role.value] ?? 'Pengguna');
+const dashboardTitle = computed(() => `Dashboard ${roleLabel.value}`);
+
 function formatRp(n?: number): string {
     return 'Rp ' + (n ?? 0).toLocaleString('id-ID');
 }
@@ -51,16 +59,19 @@ const chartData = computed(() =>
 </script>
 
 <template>
-    <Head title="Dashboard" />
+    <Head :title="dashboardTitle" />
 
     <div class="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-6">
         <!-- Greeting -->
         <div>
-            <h1 class="text-2xl font-bold text-green-900">
-                Selamat datang, {{ user.name }}
-            </h1>
-            <p class="text-sm text-muted-foreground mt-1 capitalize">
-                Peran: <span class="font-medium text-green-700">{{ role.replace('_', ' ') }}</span>
+            <div class="flex flex-wrap items-center gap-2">
+                <h1 class="text-2xl font-bold text-green-900">{{ dashboardTitle }}</h1>
+                <span class="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
+                    {{ roleLabel }}
+                </span>
+            </div>
+            <p class="mt-1 text-sm text-muted-foreground">
+                Selamat datang, <span class="font-medium text-green-700">{{ user.name }}</span>
             </p>
         </div>
 

@@ -7,10 +7,12 @@ use App\Enums\JenisSampah;
 use App\Enums\PesananStatus;
 use App\Models\BahanJadi;
 use App\Models\Pesanan;
+use App\Services\BeliBahanJadi;
 use App\Services\CreateBahanJadi;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -45,6 +47,40 @@ class BahanJadiController extends Controller
         );
 
         return Inertia::render('Industri/BahanJadi', compact('deals', 'bahanJadi', 'jenisSampahOptions'));
+    }
+
+    /** Marketplace: semua bahan baku jadi yang tersedia untuk dibeli. */
+    public function marketplace(): Response
+    {
+        $items = BahanJadi::with('user')
+            ->where('status', BahanJadiStatus::Tersedia->value)
+            ->latest()
+            ->get()
+            ->map(fn (BahanJadi $bj): array => [
+                'id' => $bj->id,
+                'nama' => $bj->nama,
+                'jenis_label' => $bj->jenis_sampah->label(),
+                'deskripsi' => $bj->deskripsi,
+                'berat' => (float) $bj->berat,
+                'harga' => (float) $bj->harga,
+                'image' => $bj->foto_path ? '/storage/'.$bj->foto_path : null,
+                'penjual' => $bj->user->name,
+                'is_own' => $bj->user_id === Auth::id(),
+            ]);
+
+        return Inertia::render('BahanJadi/Marketplace', ['items' => $items]);
+    }
+
+    /** Beli bahan baku jadi (harga tetap, bayar simulasi). */
+    public function beli(BahanJadi $bahanJadi, BeliBahanJadi $service): RedirectResponse
+    {
+        try {
+            $service->handle(Auth::user(), $bahanJadi);
+
+            return back()->with('success', 'Pembelian berhasil (simulasi). Barang LUNAS.');
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
     }
 
     /** Industri: process a deal into a sellable finished material. */

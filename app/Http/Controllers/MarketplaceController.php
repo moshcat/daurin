@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\BahanBakuStatus;
 use App\Enums\BahanJadiStatus;
+use App\Enums\JenisSampah;
 use App\Enums\ListingStatus;
 use App\Models\BahanBaku;
 use App\Models\BahanJadi;
@@ -22,9 +23,9 @@ class MarketplaceController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        // Layer 2 — bahan baku pengepul (with lineage + active auction for the buy CTA).
+        // Layer 2 — bahan baku yang sedang dinegosiasikan (bisa langsung ditawar).
         $bahanBaku = BahanBaku::with(['user', 'sourceListing.user', 'lelang'])
-            ->whereIn('status', [BahanBakuStatus::Tersedia->value, BahanBakuStatus::Dilelang->value])
+            ->where('status', BahanBakuStatus::Dilelang->value)
             ->latest()
             ->limit(24)
             ->get();
@@ -51,5 +52,34 @@ class MarketplaceController extends Controller
                 'bahanJadiCount' => BahanJadi::where('status', BahanJadiStatus::Tersedia->value)->count(),
             ],
         ]);
+    }
+
+    /** Halaman etalase lengkap dengan filter (publik). */
+    public function etalase(): Response
+    {
+        $listings = ListingSampah::with('user')
+            ->where('status', ListingStatus::Tersedia->value)
+            ->latest()
+            ->limit(60)
+            ->get();
+
+        $bahanBaku = BahanBaku::with(['user', 'sourceListing.user', 'lelang'])
+            ->where('status', BahanBakuStatus::Dilelang->value)
+            ->latest()
+            ->limit(60)
+            ->get();
+
+        $bahanJadi = BahanJadi::with(['user', 'sourcePesanan.bahanBaku.sourceListing.user'])
+            ->where('status', BahanJadiStatus::Tersedia->value)
+            ->latest()
+            ->limit(60)
+            ->get();
+
+        $jenisSampahOptions = array_map(
+            fn (JenisSampah $j) => ['value' => $j->value, 'label' => $j->label()],
+            JenisSampah::cases()
+        );
+
+        return Inertia::render('Etalase', compact('listings', 'bahanBaku', 'bahanJadi', 'jenisSampahOptions'));
     }
 }

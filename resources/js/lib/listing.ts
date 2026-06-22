@@ -48,6 +48,7 @@ export interface TraceNode {
 export interface MarketProduct {
     id: number
     layer: Layer
+    jenis: string
     title: string
     subtitle: string
     price: number | string
@@ -99,6 +100,7 @@ export function productFromListing(item: ListingItem): MarketProduct {
     return {
         id: item.id,
         layer: 'sampah',
+        jenis: item.jenis_sampah,
         title: jenisLabel(item.jenis_sampah),
         subtitle: `${Number(item.berat)} kg · ${item.ai_label ?? 'Sangat baik'}`,
         price: item.harga,
@@ -128,6 +130,7 @@ export function productFromBahanBaku(bb: BahanBakuItem): MarketProduct {
     return {
         id: bb.id,
         layer: 'bahan_baku',
+        jenis: bb.jenis_sampah,
         title: jenisLabel(bb.jenis_sampah),
         subtitle: `${Number(bb.berat)} kg · ${bb.peruntukan ?? 'Bahan baku'}`,
         price: bb.harga_awal,
@@ -169,6 +172,7 @@ export function productFromBahanJadi(bj: BahanJadiItem): MarketProduct {
     return {
         id: bj.id,
         layer: 'bahan_jadi',
+        jenis: bj.jenis_sampah,
         title: bj.nama,
         subtitle: `${Number(bj.berat)} kg · ${jenisLabel(bj.jenis_sampah)}`,
         price: bj.harga,
