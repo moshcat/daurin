@@ -16,6 +16,11 @@ interface PesananItem {
     status: string;
 }
 
+interface LelangRef {
+    id: number;
+    status: string;
+}
+
 interface BahanBakuItem {
     id: number;
     jenis_sampah: string;
@@ -25,6 +30,7 @@ interface BahanBakuItem {
     status: string;
     source_listing?: SourceListing;
     pesanan?: PesananItem;
+    lelang?: LelangRef | null;
 }
 
 interface ClaimedListing {
@@ -50,10 +56,37 @@ const showFormForListing = ref<number | null>(null);
 const form = ref({ jenis_sampah: '', peruntukan: '', berat: '', harga_awal: '' });
 const errors = ref<Record<string, string>>({});
 
+const showLelangFor = ref<number | null>(null);
+const lelangForm = ref({ harga_awal: '', kelipatan: '1000', durasi_menit: '60', harga_buyout: '' });
+const lelangErrors = ref<Record<string, string>>({});
+
 const statusClass: Record<string, string> = {
     tersedia: 'bg-green-100 text-green-700',
+    dilelang: 'bg-amber-100 text-amber-700',
     terjual: 'bg-gray-100 text-gray-500',
 };
+
+function openLelang(item: BahanBakuItem): void {
+    showLelangFor.value = item.id;
+    lelangForm.value = { harga_awal: String(item.harga_awal), kelipatan: '1000', durasi_menit: '60', harga_buyout: '' };
+    lelangErrors.value = {};
+}
+
+function startLelang(itemId: number): void {
+    const payload: Record<string, string> = {
+        harga_awal: lelangForm.value.harga_awal,
+        kelipatan: lelangForm.value.kelipatan,
+        durasi_menit: lelangForm.value.durasi_menit,
+    };
+    if (lelangForm.value.harga_buyout) {
+        payload.harga_buyout = lelangForm.value.harga_buyout;
+    }
+    router.post(`/pengepul/lelang/${itemId}`, payload, {
+        onError: (e) => {
+            lelangErrors.value = e;
+        },
+    });
+}
 
 function jenisLabel(v: string): string {
     return props.jenisSampahOptions.find((o) => o.value === v)?.label ?? v;
@@ -140,7 +173,8 @@ function submitBahanBaku(listingId: number): void {
                         </div>
                         <div>
                             <Label class="text-xs">Berat (kg)</Label>
-                            <Input v-model="form.berat" type="number" step="0.1" class="mt-1" />
+                            <Input v-model="form.berat" type="number" min="0.1" step="0.1" :max="listing.berat" class="mt-1" />
+                            <p class="text-[11px] text-gray-400">Maksimal {{ listing.berat }} kg — tidak boleh melebihi berat listing asal.</p>
                             <p v-if="errors.berat" class="text-xs text-red-500">{{ errors.berat }}</p>
                         </div>
                         <div>
@@ -202,6 +236,62 @@ function submitBahanBaku(listingId: number): void {
                             >
                                 Lihat →
                             </a>
+                        </div>
+
+                        <!-- Lelang -->
+                        <div class="mt-3 border-t pt-3">
+                            <a
+                                v-if="item.lelang"
+                                :href="`/lelang/${item.lelang.id}`"
+                                class="inline-flex w-full items-center justify-center rounded-lg bg-amber-500 py-2 text-sm font-medium text-white hover:bg-amber-600"
+                            >
+                                💬 Lihat Negosiasi →
+                            </a>
+                            <template v-else-if="item.status === 'tersedia'">
+                                <button
+                                    v-if="showLelangFor !== item.id"
+                                    @click="openLelang(item)"
+                                    class="w-full rounded-lg bg-amber-500 py-2 text-sm font-medium text-white hover:bg-amber-600"
+                                >
+                                    💬 Mulai Negosiasi
+                                </button>
+                                <div v-else class="space-y-2">
+                                    <div>
+                                        <Label class="text-xs">Harga Awal (Rp)</Label>
+                                        <Input v-model="lelangForm.harga_awal" type="number" class="mt-1" />
+                                        <p v-if="lelangErrors.harga_awal" class="text-xs text-red-500">{{ lelangErrors.harga_awal }}</p>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <Label class="text-xs">Kelipatan</Label>
+                                            <Input v-model="lelangForm.kelipatan" type="number" class="mt-1" />
+                                        </div>
+                                        <div>
+                                            <Label class="text-xs">Durasi (menit)</Label>
+                                            <Input v-model="lelangForm.durasi_menit" type="number" class="mt-1" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <Label class="text-xs">Beli Langsung (opsional)</Label>
+                                        <Input v-model="lelangForm.harga_buyout" type="number" placeholder="kosongkan jika tidak ada" class="mt-1" />
+                                        <p v-if="lelangErrors.harga_buyout" class="text-xs text-red-500">{{ lelangErrors.harga_buyout }}</p>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button
+                                            @click="startLelang(item.id)"
+                                            class="flex-1 rounded-lg bg-amber-600 py-1.5 text-sm font-medium text-white hover:bg-amber-700"
+                                        >
+                                            Buka Negosiasi
+                                        </button>
+                                        <button
+                                            @click="showLelangFor = null"
+                                            class="rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50"
+                                        >
+                                            Batal
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
                         </div>
                     </CardContent>
                 </Card>

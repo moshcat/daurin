@@ -18,6 +18,7 @@ export interface BahanBakuItem {
     status: string
     user: { name: string }
     source_listing?: (ListingItem & { user?: { name: string } }) | null
+    lelang?: { id: number; status: string } | null
 }
 
 export interface BahanJadiItem {
@@ -53,6 +54,7 @@ export interface MarketProduct {
     image: string
     badge: string
     trace?: TraceNode[]
+    lelangId?: number | null
 }
 
 export const jenisSampahLabel: Record<string, string> = {
@@ -74,13 +76,12 @@ export function formatRp(n: number | string): string {
     return 'Rp ' + Number(n).toLocaleString('id-ID')
 }
 
-/** Real photo when uploaded, otherwise a deterministic placeholder for demo. */
 export function listingImageUrl(item: Pick<ListingItem, 'id' | 'foto_path'>): string {
     if (item.foto_path) {
         return `/storage/${item.foto_path}`
     }
 
-    return `https://picsum.photos/seed/daurin${item.id}/500/500`
+    return `data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22500%22%20height%3D%22500%22%20viewBox%3D%220%200%20500%20500%22%3E%3Crect%20width%3D%22500%22%20height%3D%22500%22%20fill%3D%22%23e2e8f0%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%20font-size%3D%2224%22%20fill%3D%22%2394a3b8%22%3ENo%20Image%3C%2Ftext%3E%3C%2Fsvg%3E` // Fallback to local generic placeholder
 }
 
 // ── Normalised product mappers (one card for all three layers) ───────────────
@@ -122,7 +123,7 @@ export function productFromBahanBaku(bb: BahanBakuItem): MarketProduct {
 
     const image = bb.source_listing?.foto_path
         ? `/storage/${bb.source_listing.foto_path}`
-        : `https://picsum.photos/seed/daurinbb${bb.id}/500/500`
+        : `data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22500%22%20height%3D%22500%22%20viewBox%3D%220%200%20500%20500%22%3E%3Crect%20width%3D%22500%22%20height%3D%22500%22%20fill%3D%22%23e2e8f0%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%20font-size%3D%2224%22%20fill%3D%22%2394a3b8%22%3ENo%20Image%3C%2Ftext%3E%3C%2Fsvg%3E`
 
     return {
         id: bb.id,
@@ -131,8 +132,9 @@ export function productFromBahanBaku(bb: BahanBakuItem): MarketProduct {
         subtitle: `${Number(bb.berat)} kg · ${bb.peruntukan ?? 'Bahan baku'}`,
         price: bb.harga_awal,
         image,
-        badge: 'Bahan Baku',
+        badge: bb.lelang ? 'Negosiasi' : 'Bahan Baku',
         trace,
+        lelangId: bb.lelang?.id ?? null,
     }
 }
 
@@ -162,7 +164,7 @@ export function productFromBahanJadi(bj: BahanJadiItem): MarketProduct {
 
     const image = bj.foto_path
         ? `/storage/${bj.foto_path}`
-        : `https://picsum.photos/seed/daurinbj${bj.id}/500/500`
+        : `data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22500%22%20height%3D%22500%22%20viewBox%3D%220%200%20500%20500%22%3E%3Crect%20width%3D%22500%22%20height%3D%22500%22%20fill%3D%22%23e2e8f0%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22sans-serif%22%20font-size%3D%2224%22%20fill%3D%22%2394a3b8%22%3ENo%20Image%3C%2Ftext%3E%3C%2Fsvg%3E`
 
     return {
         id: bj.id,

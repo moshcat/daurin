@@ -66,4 +66,10 @@ class ListingSampah extends Model
     {
         return $this->hasMany(BahanBaku::class, 'source_listing_id');
     }
+
+    /** Price offers from pengepul (RT↔pengepul negotiation). */
+    public function penawaran(): HasMany
+    {
+        return $this->hasMany(PenawaranListing::class, 'listing_sampah_id');
+    }
 }

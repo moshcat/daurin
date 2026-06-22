@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\NegosiaPengirim;
 use App\Enums\PesananStatus;
 use App\Models\Pesanan;
+use App\Notifications\PembayaranDiterima;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -39,5 +40,27 @@ class PesananController extends Controller
 
         return redirect()->route('industri.nego.show', $pesanan)
             ->with('success', 'Penawaran dikirim.');
+    }
+
+    /** Industri: bayar pesanan yang sudah deal (simulasi pembayaran). */
+    public function bayar(Pesanan $pesanan): RedirectResponse
+    {
+        abort_unless($pesanan->industri_id === Auth::id(), 403);
+
+        if ($pesanan->status !== PesananStatus::Deal) {
+            return back()->withErrors(['pesanan' => 'Pesanan belum berstatus deal.']);
+        }
+
+        if ($pesanan->sudahDibayar()) {
+            return back()->with('success', 'Pesanan sudah lunas.');
+        }
+
+        $pesanan->update(['dibayar_at' => now()]);
+
+        // Notifikasi ke penjual (best-effort).
+        $pesanan->loadMissing('bahanBaku.user');
+        rescue(fn () => $pesanan->bahanBaku->user?->notify(new PembayaranDiterima($pesanan)));
+
+        return back()->with('success', 'Pembayaran berhasil (simulasi). Pesanan LUNAS.');
     }
 }

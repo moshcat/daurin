@@ -3,6 +3,13 @@ import { Head, router } from '@inertiajs/vue3';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
+interface Penawaran {
+    id: number;
+    harga: number;
+    status: string;
+    pengepul: { name: string };
+}
+
 interface Listing {
     id: number;
     jenis_sampah: string;
@@ -13,9 +20,19 @@ interface Listing {
     ai_label?: string;
     ai_confidence?: number;
     created_at: string;
+    penawaran?: Penawaran[];
 }
 
 defineProps<{ listings: Listing[] }>();
+
+function terimaPenawaran(id: number): void {
+    if (!confirm('Terima penawaran ini? Listing akan diambil pengepul.')) return;
+    router.post(`/rt/penawaran/${id}/terima`, {}, { preserveScroll: true });
+}
+
+function tolakPenawaran(id: number): void {
+    router.post(`/rt/penawaran/${id}/tolak`, {}, { preserveScroll: true });
+}
 
 const statusClass: Record<string, string> = {
     tersedia: 'bg-green-100 text-green-700',
@@ -86,6 +103,35 @@ function deleteListing(id: number): void {
                     <div v-if="item.ai_label" class="mt-1 text-xs text-blue-600">
                         🤖 AI: {{ item.ai_label }} ({{ Math.round((item.ai_confidence ?? 0) * 100) }}%)
                     </div>
+                    <!-- Penawaran masuk dari pengepul -->
+                    <div v-if="item.penawaran && item.penawaran.length > 0" class="mt-3 space-y-2 border-t pt-3">
+                        <p class="text-xs font-semibold text-amber-700">💬 Penawaran masuk ({{ item.penawaran.length }})</p>
+                        <div
+                            v-for="p in item.penawaran"
+                            :key="p.id"
+                            class="rounded-lg border border-amber-200 bg-amber-50 p-2"
+                        >
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs text-gray-600">{{ p.pengepul.name }}</span>
+                                <span class="text-sm font-bold text-amber-800">{{ formatRp(p.harga) }}</span>
+                            </div>
+                            <div class="mt-2 flex gap-2">
+                                <button
+                                    @click="terimaPenawaran(p.id)"
+                                    class="flex-1 rounded bg-green-700 py-1 text-xs font-medium text-white hover:bg-green-800"
+                                >
+                                    Terima
+                                </button>
+                                <button
+                                    @click="tolakPenawaran(p.id)"
+                                    class="rounded border border-gray-300 px-3 py-1 text-xs hover:bg-gray-50"
+                                >
+                                    Tolak
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="mt-3">
                         <button
                             v-if="item.status === 'tersedia'"

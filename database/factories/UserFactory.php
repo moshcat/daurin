@@ -57,6 +57,26 @@ class UserFactory extends Factory
     }
 
     /**
+     * Indicate that the user is a "rumah tangga".
+     */
+    public function rumahTangga(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::RumahTangga->value,
+        ]);
+    }
+
+    /**
+     * Indicate that the user is a "pengepul".
+     */
+    public function pengepul(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Pengepul->value,
+        ]);
+    }
+
+    /**
      * Indicate that the model has two-factor authentication configured.
      */
     public function withTwoFactor(): static {}
