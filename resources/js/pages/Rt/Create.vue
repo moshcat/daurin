@@ -178,7 +178,8 @@ function submit(): void {
                 <!-- Berat -->
                 <div class="space-y-1">
                     <Label for="berat">Berat (kg) *</Label>
-                    <Input id="berat" type="number" min="0.1" step="0.1" v-model="berat" placeholder="Contoh: 2.5" />
+                    <Input id="berat" type="number" min="1" step="0.1" v-model="berat" placeholder="Contoh: 2.5" />
+                    <p class="text-xs text-gray-400">Minimal 1 kg untuk dijual.</p>
                     <p v-if="errors.berat" class="text-xs text-red-500">{{ errors.berat }}</p>
                 </div>
 

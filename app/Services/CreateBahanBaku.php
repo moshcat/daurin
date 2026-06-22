@@ -26,6 +26,14 @@ class CreateBahanBaku
             ]);
         }
 
+        // Bahan baku diturunkan dari satu listing, jadi beratnya tidak boleh
+        // melebihi berat material asal (pemilahan hanya mengurangi, bukan menambah).
+        if (isset($data['berat']) && (float) $data['berat'] > (float) $listing->berat) {
+            throw ValidationException::withMessages([
+                'berat' => 'Berat bahan baku tidak boleh melebihi berat listing asal ('.$listing->berat.' kg).',
+            ]);
+        }
+
         return DB::transaction(function () use ($pengepul, $listing, $data): BahanBaku {
             $bahanBaku = BahanBaku::create(array_merge($data, [
                 'user_id' => $pengepul->id,

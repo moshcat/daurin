@@ -4,12 +4,16 @@ namespace App\Models;
 
 use App\Enums\BahanBakuStatus;
 use App\Enums\JenisSampah;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class BahanBaku extends Model
 {
+    /** @use HasFactory<\Database\Factories\BahanBakuFactory> */
+    use HasFactory;
+
     protected $table = 'bahan_baku';
 
     protected $fillable = [
@@ -47,5 +51,11 @@ class BahanBaku extends Model
     public function pesanan(): HasOne
     {
         return $this->hasOne(Pesanan::class);
+    }
+
+    /** The auction for this bahan baku, if any. */
+    public function lelang(): HasOne
+    {
+        return $this->hasOne(Lelang::class);
     }
 }

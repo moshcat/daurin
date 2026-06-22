@@ -1,19 +1,20 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { Head, Link } from '@inertiajs/vue3';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 
-interface BahanBakuItem {
+interface LelangItem {
     id: number;
     jenis_sampah: string;
-    peruntukan?: string;
+    jenis_label: string;
     berat: number;
+    peruntukan?: string | null;
+    pengepul: string;
     harga_awal: number;
-    status: string;
-    user: { name: string };
+    harga_tertinggi: number | null;
+    jumlah_bid: number;
+    waktu_selesai: string;
 }
 
 interface JenisOption {
@@ -22,14 +23,11 @@ interface JenisOption {
 }
 
 const props = defineProps<{
-    bahanBaku: BahanBakuItem[];
+    lelangs: LelangItem[];
     jenisSampahOptions: JenisOption[];
 }>();
 
 const filterJenis = ref('');
-const showOrderFormFor = ref<number | null>(null);
-const orderHarga = ref('');
-const orderCatatan = ref('');
 
 const jenisBadgeClass: Record<string, string> = {
     plastik_pet: 'bg-blue-100 text-blue-800',
@@ -44,46 +42,36 @@ const jenisBadgeClass: Record<string, string> = {
 
 const filtered = computed(() =>
     filterJenis.value
-        ? props.bahanBaku.filter((b) => b.jenis_sampah === filterJenis.value)
-        : props.bahanBaku,
+        ? props.lelangs.filter((b) => b.jenis_sampah === filterJenis.value)
+        : props.lelangs,
 );
 
-function jenisLabel(v: string): string {
-    return props.jenisSampahOptions.find((o) => o.value === v)?.label ?? v;
+const now = ref(Date.now());
+let timer: number | undefined;
+onMounted(() => (timer = window.setInterval(() => (now.value = Date.now()), 1000)));
+onUnmounted(() => timer && clearInterval(timer));
+
+function countdown(waktuSelesai: string): string {
+    const s = Math.max(0, Math.floor((new Date(waktuSelesai).getTime() - now.value) / 1000));
+    const j = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const d = s % 60;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return j > 0 ? `${j}:${pad(m)}:${pad(d)}` : `${pad(m)}:${pad(d)}`;
 }
 
 function formatRp(n: number): string {
     return 'Rp ' + n.toLocaleString('id-ID');
 }
-
-function openOrderForm(item: BahanBakuItem): void {
-    showOrderFormFor.value = item.id;
-    orderHarga.value = String(item.harga_awal);
-    orderCatatan.value = '';
-}
-
-function submitOrder(bahanBakuId: number): void {
-    if (!orderHarga.value) return;
-    router.post(
-        '/industri/pesanan',
-        { bahan_baku_id: bahanBakuId, harga: orderHarga.value, catatan: orderCatatan.value },
-        {
-            onSuccess: () => {
-                showOrderFormFor.value = null;
-                orderHarga.value = '';
-            },
-        },
-    );
-}
 </script>
 
 <template>
-    <Head title="Cari Bahan Baku" />
+    <Head title="Negosiasi Berlangsung" />
 
     <div class="flex h-full flex-1 flex-col gap-4 p-6">
         <div class="flex items-center justify-between flex-wrap gap-3">
             <div class="flex items-center gap-4">
-                <h1 class="text-2xl font-bold text-green-900">Bahan Baku Tersedia</h1>
+                <h1 class="text-2xl font-bold text-green-900">💬 Negosiasi Harga Berlangsung</h1>
                 <a href="/industri/bahan-jadi" class="text-sm font-medium text-green-700 hover:underline">
                     → Bahan Baku Jadi
                 </a>
@@ -100,7 +88,7 @@ function submitOrder(bahanBakuId: number): void {
         </div>
 
         <div v-if="filtered.length === 0" class="flex flex-1 items-center justify-center text-gray-400">
-            <p>Tidak ada bahan baku tersedia.</p>
+            <p>Belum ada negosiasi berlangsung saat ini.</p>
         </div>
 
         <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -111,57 +99,30 @@ function submitOrder(bahanBakuId: number): void {
                             class="rounded-full px-2.5 py-0.5 text-xs font-semibold"
                             :class="jenisBadgeClass[item.jenis_sampah] ?? 'bg-gray-100 text-gray-700'"
                         >
-                            {{ jenisLabel(item.jenis_sampah) }}
+                            {{ item.jenis_label }}
                         </span>
-                        <Badge variant="secondary" class="text-[10px]">tersedia</Badge>
+                        <Badge variant="secondary" class="font-mono text-[10px] tabular-nums">
+                            ⏱ {{ countdown(item.waktu_selesai) }}
+                        </Badge>
                     </div>
                 </CardHeader>
                 <CardContent class="px-4 pb-4">
-                    <div class="text-xl font-bold text-green-800">{{ formatRp(item.harga_awal) }}</div>
-                    <div class="text-sm text-gray-500 mt-0.5">{{ item.berat }} kg</div>
-                    <div v-if="item.peruntukan" class="text-xs text-gray-400">{{ item.peruntukan }}</div>
-                    <div class="text-xs text-gray-400">{{ item.user.name }}</div>
-
-                    <!-- Order form -->
-                    <div class="mt-3">
-                        <button
-                            v-if="showOrderFormFor !== item.id"
-                            @click="openOrderForm(item)"
-                            class="w-full rounded-lg bg-green-700 py-2 text-sm font-medium text-white hover:bg-green-800"
-                        >
-                            Pesan &amp; Nego
-                        </button>
-                        <div v-else class="space-y-2">
-                            <div>
-                                <Label class="text-xs">Penawaran Awal (Rp)</Label>
-                                <Input
-                                    v-model="orderHarga"
-                                    type="number"
-                                    :placeholder="String(item.harga_awal)"
-                                    class="mt-1"
-                                />
-                            </div>
-                            <div>
-                                <Label class="text-xs">Catatan (opsional)</Label>
-                                <Input v-model="orderCatatan" type="text" placeholder="Catatan..." class="mt-1" />
-                            </div>
-                            <div class="flex gap-2">
-                                <button
-                                    @click="submitOrder(item.id)"
-                                    :disabled="!orderHarga"
-                                    class="flex-1 rounded-lg bg-green-700 py-2 text-sm font-medium text-white hover:bg-green-800 disabled:opacity-50"
-                                >
-                                    Kirim Penawaran
-                                </button>
-                                <button
-                                    @click="showOrderFormFor = null"
-                                    class="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        </div>
+                    <div class="text-xs text-gray-400">Tawaran tertinggi</div>
+                    <div class="text-xl font-bold text-green-800">
+                        {{ formatRp(item.harga_tertinggi ?? item.harga_awal) }}
                     </div>
+                    <div class="mt-0.5 text-sm text-gray-500">
+                        {{ item.berat }} kg · {{ item.jumlah_bid }} tawaran
+                    </div>
+                    <div v-if="item.peruntukan" class="text-xs text-gray-400">{{ item.peruntukan }}</div>
+                    <div class="text-xs text-gray-400">{{ item.pengepul }}</div>
+
+                    <Link
+                        :href="`/lelang/${item.id}`"
+                        class="mt-3 block w-full rounded-lg bg-green-700 py-2 text-center text-sm font-medium text-white hover:bg-green-800"
+                    >
+                        Masuk Ruang Negosiasi →
+                    </Link>
                 </CardContent>
             </Card>
         </div>

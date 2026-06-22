@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\JenisSampah;
 use App\Enums\ListingStatus;
+use App\Enums\PenawaranStatus;
 use App\Models\ListingSampah;
 use App\Services\ClaimListing;
 use Illuminate\Http\RedirectResponse;
@@ -19,7 +20,10 @@ class ListingSampahController extends Controller
 
     public function index(): Response
     {
-        $listings = Auth::user()->listingSampah()->latest()->get();
+        $listings = Auth::user()->listingSampah()
+            ->with(['penawaran' => fn ($q) => $q->where('status', PenawaranStatus::Diajukan->value)->with('pengepul')->latest()])
+            ->latest()
+            ->get();
 
         return Inertia::render('Rt/Index', compact('listings'));
     }
@@ -38,13 +42,15 @@ class ListingSampahController extends Controller
     {
         $data = $request->validate([
             'jenis_sampah'   => ['required', 'string'],
-            'berat'          => ['required', 'numeric', 'min:0.01'],
+            'berat'          => ['required', 'numeric', 'min:1'],
             'harga'          => ['required', 'numeric', 'min:0'],
             'foto'           => ['nullable', 'file', 'image', 'max:5120'],
             'ai_label'       => ['nullable', 'string'],
             'ai_confidence'  => ['nullable', 'numeric', 'min:0', 'max:1'],
             'lat'            => ['nullable', 'numeric'],
             'lng'            => ['nullable', 'numeric'],
+        ], [
+            'berat.min' => 'Berat minimum untuk dijual adalah 1 kg.',
         ]);
 
         $fotoPath = null;
@@ -96,7 +102,7 @@ class ListingSampahController extends Controller
 
         $handledJenis = $user->pengepulJenis()->pluck('jenis_sampah')->toArray();
 
-        $listings = ListingSampah::with('user')
+        $listings = ListingSampah::with(['user', 'penawaran' => fn ($q) => $q->where('pengepul_id', $user->id)->latest()])
             ->where('status', ListingStatus::Tersedia->value)
             ->whereIn('jenis_sampah', $handledJenis)
             ->latest()

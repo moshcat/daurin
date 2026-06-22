@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\ListingStatus;
 use App\Models\ListingSampah;
 use App\Models\User;
+use App\Notifications\ListingDiklaim;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -48,5 +49,9 @@ class ClaimListing
                 'claimed_by' => $pengepul->id,
             ]);
         });
+
+        // Notifikasi ke rumah tangga pemilik listing (queued, best-effort).
+        $listing->loadMissing('user');
+        rescue(fn () => $listing->user?->notify(new ListingDiklaim($listing, $pengepul->name)));
     }
 }

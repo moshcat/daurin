@@ -15,6 +15,7 @@ interface ListingItem {
     lat?: number | null;
     lng?: number | null;
     user: { name: string; lat?: number | null; lng?: number | null };
+    penawaran?: { id: number; harga: number; status: string }[];
 }
 
 const props = defineProps<{
@@ -219,6 +220,35 @@ function updateRouteOnMap(order: Point[]): void {
     } else {
         leafletMap.setView(coords[0], 14);
     }
+}
+
+const tawarFor = ref<number | null>(null);
+const tawarHarga = ref('');
+
+function penawaranAktif(item: ListingItem): { id: number; harga: number; status: string } | undefined {
+    return item.penawaran?.find((p) => p.status === 'diajukan');
+}
+
+function openTawar(item: ListingItem): void {
+    tawarFor.value = item.id;
+    tawarHarga.value = String(item.harga);
+}
+
+function submitTawar(id: number): void {
+    if (!tawarHarga.value) {
+        return;
+    }
+    router.post(
+        `/pengepul/penawaran/${id}`,
+        { harga: tawarHarga.value },
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                tawarFor.value = null;
+                tawarHarga.value = '';
+            },
+        },
+    );
 }
 
 function klaim(id: number): void {
@@ -461,11 +491,50 @@ onUnmounted(() => {
                                     <div class="ml-5 text-xs text-gray-400">{{ item.user.name }}</div>
                                     <div v-if="!item.lat" class="mt-0.5 ml-5 text-xs text-amber-500">⚠ Tanpa koordinat</div>
                                 </div>
+                                <div class="flex shrink-0 flex-col items-end gap-1" @click.stop>
+                                    <span
+                                        v-if="penawaranAktif(item)"
+                                        class="rounded-lg bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700"
+                                    >
+                                        Menunggu · {{ formatRp(penawaranAktif(item)!.harga) }}
+                                    </span>
+                                    <template v-else>
+                                        <button
+                                            @click="klaim(item.id)"
+                                            class="rounded-lg bg-green-700 px-3 py-1 text-xs font-medium text-white hover:bg-green-800"
+                                        >
+                                            Klaim
+                                        </button>
+                                        <button
+                                            @click="openTawar(item)"
+                                            class="rounded-lg border border-amber-400 px-3 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50"
+                                        >
+                                            Tawar
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Form tawar harga -->
+                            <div v-if="tawarFor === item.id" class="mt-2 flex items-center gap-2" @click.stop>
+                                <input
+                                    v-model="tawarHarga"
+                                    type="number"
+                                    min="0"
+                                    :placeholder="String(item.harga)"
+                                    class="h-8 flex-1 rounded border border-gray-300 px-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
+                                />
                                 <button
-                                    @click.stop="klaim(item.id)"
-                                    class="shrink-0 rounded-lg bg-green-700 px-3 py-1 text-xs font-medium text-white hover:bg-green-800"
+                                    @click="submitTawar(item.id)"
+                                    class="rounded bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
                                 >
-                                    Klaim
+                                    Kirim
+                                </button>
+                                <button
+                                    @click="tawarFor = null"
+                                    class="rounded border border-gray-300 px-2 py-1.5 text-xs hover:bg-gray-50"
+                                >
+                                    ✕
                                 </button>
                             </div>
                         </div>

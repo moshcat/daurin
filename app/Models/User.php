@@ -81,6 +81,18 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Pesanan::class, 'industri_id');
     }
 
+    /** Bids this industri has placed in auctions. */
+    public function lelangBids(): HasMany
+    {
+        return $this->hasMany(LelangBid::class, 'industri_id');
+    }
+
+    /** Auctions this industri has won. */
+    public function lelangDimenangkan(): HasMany
+    {
+        return $this->hasMany(Lelang::class, 'pemenang_id');
+    }
+
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     public function isRumahTangga(): bool

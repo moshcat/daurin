@@ -22,9 +22,9 @@ class MarketplaceController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        // Layer 2 — bahan baku pengepul (with lineage to source listing/RT).
-        $bahanBaku = BahanBaku::with(['user', 'sourceListing.user'])
-            ->where('status', BahanBakuStatus::Tersedia->value)
+        // Layer 2 — bahan baku pengepul (with lineage + active auction for the buy CTA).
+        $bahanBaku = BahanBaku::with(['user', 'sourceListing.user', 'lelang'])
+            ->whereIn('status', [BahanBakuStatus::Tersedia->value, BahanBakuStatus::Dilelang->value])
             ->latest()
             ->limit(24)
             ->get();

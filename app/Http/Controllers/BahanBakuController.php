@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Enums\BahanBakuStatus;
 use App\Enums\JenisSampah;
+use App\Enums\LelangStatus;
 use App\Enums\ListingStatus;
 use App\Models\BahanBaku;
+use App\Models\Lelang;
 use App\Models\ListingSampah;
 use App\Services\CreateBahanBaku;
 use Illuminate\Http\RedirectResponse;
@@ -23,7 +25,7 @@ class BahanBakuController extends Controller
         $user = Auth::user();
 
         $bahanBaku = $user->bahanBaku()
-            ->with(['sourceListing', 'pesanan'])
+            ->with(['sourceListing', 'pesanan', 'lelang'])
             ->latest()
             ->get();
 
@@ -47,8 +49,11 @@ class BahanBakuController extends Controller
         $data = $request->validate([
             'jenis_sampah' => ['required', 'string'],
             'peruntukan'   => ['nullable', 'string', 'max:255'],
-            'berat'        => ['required', 'numeric', 'min:0.01'],
+            'berat'        => ['required', 'numeric', 'gt:0', 'max:'.$listing->berat],
             'harga_awal'   => ['required', 'numeric', 'min:0'],
+        ], [
+            'berat.gt'  => 'Berat bahan baku harus lebih dari 0 kg.',
+            'berat.max' => 'Berat bahan baku tidak boleh melebihi berat listing asal ('.$listing->berat.' kg).',
         ]);
 
         try {
@@ -61,19 +66,31 @@ class BahanBakuController extends Controller
         }
     }
 
-    /** Industri: browse all available bahan baku. */
+    /** Industri: browse live auctions to bid on. */
     public function indexForIndustri(): Response
     {
-        $bahanBaku = BahanBaku::with(['user', 'sourceListing'])
-            ->where('status', BahanBakuStatus::Tersedia->value)
+        $lelangs = Lelang::with(['bahanBaku.user', 'highestBid'])
+            ->where('status', LelangStatus::Berlangsung->value)
             ->latest()
-            ->get();
+            ->get()
+            ->map(fn (Lelang $lelang): array => [
+                'id' => $lelang->id,
+                'jenis_sampah' => $lelang->bahanBaku->jenis_sampah->value,
+                'jenis_label' => $lelang->bahanBaku->jenis_sampah->label(),
+                'berat' => (float) $lelang->bahanBaku->berat,
+                'peruntukan' => $lelang->bahanBaku->peruntukan,
+                'pengepul' => $lelang->bahanBaku->user->name,
+                'harga_awal' => (float) $lelang->harga_awal,
+                'harga_tertinggi' => $lelang->hargaTertinggi() !== null ? (float) $lelang->hargaTertinggi() : null,
+                'jumlah_bid' => $lelang->bids()->count(),
+                'waktu_selesai' => $lelang->waktu_selesai->toIso8601String(),
+            ]);
 
         $jenisSampahOptions = array_map(
             fn (JenisSampah $j) => ['value' => $j->value, 'label' => $j->label()],
             JenisSampah::cases()
         );
 
-        return Inertia::render('Industri/Index', compact('bahanBaku', 'jenisSampahOptions'));
+        return Inertia::render('Industri/Index', compact('lelangs', 'jenisSampahOptions'));
     }
 }
