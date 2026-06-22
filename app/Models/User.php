@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\UserRole;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -19,10 +20,12 @@ use Illuminate\Support\Carbon;
  * @property string $password
  * @property float|null $lat
  * @property float|null $lng
+ * @property string|null $nama_pt
+ * @property string|null $alamat_pt
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
@@ -34,6 +37,8 @@ class User extends Authenticatable
         'role',
         'lat',
         'lng',
+        'nama_pt',
+        'alamat_pt',
     ];
 
     protected $hidden = [

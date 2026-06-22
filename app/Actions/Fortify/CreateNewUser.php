@@ -21,9 +21,11 @@ class CreateNewUser implements CreatesNewUsers
     public function create(array $input): User
     {
         $roleValues = array_column(UserRole::cases(), 'value');
+        $role = $input['role'] ?? UserRole::RumahTangga->value;
 
         Validator::make($input, [
             ...$this->profileRules(),
+            ...$this->companyRules($role),
             'password' => $this->passwordRules(),
             'role' => ['nullable', 'string', 'in:'.implode(',', $roleValues)],
             'lat' => ['nullable', 'numeric'],
@@ -34,9 +36,11 @@ class CreateNewUser implements CreatesNewUsers
             'name' => $input['name'],
             'email' => $input['email'],
             'password' => $input['password'],
-            'role' => $input['role'] ?? UserRole::RumahTangga->value,
+            'role' => $role,
             'lat' => $input['lat'] ?? null,
             'lng' => $input['lng'] ?? null,
+            'nama_pt' => $input['nama_pt'] ?? null,
+            'alamat_pt' => $input['alamat_pt'] ?? null,
         ]);
     }
 }

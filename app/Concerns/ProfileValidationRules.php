@@ -2,6 +2,7 @@
 
 namespace App\Concerns;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\Rule;
@@ -18,6 +19,22 @@ trait ProfileValidationRules
         return [
             'name' => $this->nameRules(),
             'email' => $this->emailRules($userId),
+        ];
+    }
+
+    /**
+     * Get the validation rules for company identity fields.
+     * Wajib hanya untuk role "industri", opsional untuk role lain.
+     *
+     * @return array<string, array<int, ValidationRule|array<mixed>|string>>
+     */
+    protected function companyRules(?string $role): array
+    {
+        $required = $role === UserRole::Industri->value ? 'required' : 'nullable';
+
+        return [
+            'nama_pt' => [$required, 'string', 'max:255'],
+            'alamat_pt' => [$required, 'string', 'max:1000'],
         ];
     }
 

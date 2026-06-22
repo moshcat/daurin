@@ -71,6 +71,35 @@ const user = computed(() => page.props.auth.user);
                 <InputError class="mt-2" :message="errors.email" />
             </div>
 
+            <!-- Identitas perusahaan (khusus industri) -->
+            <template v-if="user.role === 'industri'">
+                <div class="grid gap-2">
+                    <Label for="nama_pt">Nama Perusahaan</Label>
+                    <Input
+                        id="nama_pt"
+                        class="mt-1 block w-full"
+                        name="nama_pt"
+                        :default-value="user.nama_pt ?? ''"
+                        required
+                        placeholder="PT Contoh Daur Ulang"
+                    />
+                    <InputError class="mt-2" :message="errors.nama_pt" />
+                </div>
+
+                <div class="grid gap-2">
+                    <Label for="alamat_pt">Alamat Perusahaan</Label>
+                    <Input
+                        id="alamat_pt"
+                        class="mt-1 block w-full"
+                        name="alamat_pt"
+                        :default-value="user.alamat_pt ?? ''"
+                        required
+                        placeholder="Jalan, Kota, Provinsi, Kode Pos"
+                    />
+                    <InputError class="mt-2" :message="errors.alamat_pt" />
+                </div>
+            </template>
+
             <div class="flex items-center gap-4">
                 <Button :disabled="processing" data-test="update-profile-button"
                     >Save</Button

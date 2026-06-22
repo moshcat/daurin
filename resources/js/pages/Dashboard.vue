@@ -65,7 +65,7 @@ const chartData = computed(() =>
         </div>
 
         <!-- ── Dampak Lingkungan (semua peran) ── -->
-        <div class="rounded-[14px] border border-hairline-gray p-6">
+        <!-- <div class="rounded-[14px] border border-hairline-gray p-6">
             <p class="mb-4 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Dampak Lingkungan
             </p>
@@ -85,7 +85,7 @@ const chartData = computed(() =>
                 <p class="mb-4 text-sm font-medium text-forest-ink">Volume per Jenis (kg)</p>
                 <BarChart :data="chartData" unit="kg" />
             </div>
-        </div>
+        </div> -->
 
         <!-- ── Rumah Tangga ── -->
         <template v-if="role === 'rumah_tangga'">

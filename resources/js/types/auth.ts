@@ -7,6 +7,8 @@ export type User = {
     role?: string;
     lat?: number | null;
     lng?: number | null;
+    nama_pt?: string | null;
+    alamat_pt?: string | null;
     created_at: string;
     updated_at: string;
     [key: string]: unknown;

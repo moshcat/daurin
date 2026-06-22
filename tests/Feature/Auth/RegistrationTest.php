@@ -36,4 +36,38 @@ class RegistrationTest extends TestCase
         $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));
     }
+
+    public function test_industri_registration_stores_company_fields()
+    {
+        $this->post(route('register.store'), [
+            'name' => 'Budi Industri',
+            'email' => 'budi@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'role' => 'industri',
+            'nama_pt' => 'PT Daur Maju',
+            'alamat_pt' => 'Jl. Industri No. 1, Denpasar',
+        ]);
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'budi@example.com',
+            'role' => 'industri',
+            'nama_pt' => 'PT Daur Maju',
+            'alamat_pt' => 'Jl. Industri No. 1, Denpasar',
+        ]);
+    }
+
+    public function test_industri_registration_requires_company_fields()
+    {
+        $response = $this->from(route('register'))->post(route('register.store'), [
+            'name' => 'Budi Industri',
+            'email' => 'budi2@example.com',
+            'password' => 'password',
+            'password_confirmation' => 'password',
+            'role' => 'industri',
+        ]);
+
+        $response->assertSessionHasErrors(['nama_pt', 'alamat_pt']);
+        $this->assertGuest();
+    }
 }
