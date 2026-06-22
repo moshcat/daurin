@@ -1,0 +1,245 @@
+@import 'tailwindcss';
+
+@import 'tw-animate-css';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    /* ── Font families ─────────────────────────────────────────── */
+    --font-sans:
+        'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+        'Segoe UI', Roboto, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --font-serif:
+        'Fraunces', 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+
+    /* ── Semantic shadcn tokens → CSS variables ─────────────────── */
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+
+    --color-sidebar: var(--sidebar-background);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+
+    /* ── Brand palette utilities (bg-forest-ink, text-sage-wash …) */
+    --color-forest-ink: #0f3e17;
+    --color-sage-wash: #b1dbb8;
+    --color-mist-blue: #b6ced5;
+    --color-mint-veil: #cfe7d3;
+    --color-linen: #e1f4df;
+    --color-linen-white: #fffefc;
+    --color-hairline-gray: #e5e7eb;
+    --color-charcoal: #222222;
+    --color-graphite: #333333;
+
+    /* ── Radius (DESIGN: nav=7 cards=14 badges=999 buttons=14) ─── */
+    --radius-sm: 7px;
+    --radius-md: 7px;
+    --radius-lg: 14px;
+    --radius-xl: 14px;
+    --radius-full: 999px;
+
+    /* ── Type scale (DESIGN.md table, exposed as Tailwind text-* utils) */
+    --text-caption: 12px;
+    --text-body-sm: 14px;
+    --text-body: 18px;
+    --text-subheading: 23px;
+    --text-heading-sm: 28px;
+    --text-heading: 40px;
+    --text-heading-lg: 56px;
+    --text-display: 74px;
+}
+
+/*
+  Compatibility: default border-color changed in Tailwind v4.
+  Keep the existing look without adding explicit border-color to every element.
+*/
+@layer base {
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-hairline-gray, currentColor);
+    }
+}
+
+@layer utilities {
+    body,
+    html {
+        --font-sans:
+            'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+            'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* Line-height + letter-spacing helpers paired with the type scale */
+    .text-caption       { line-height: 1.5;  letter-spacing: -0.36px; }
+    .text-body-sm       { line-height: 1.5;  letter-spacing: -0.42px; }
+    .text-body          { line-height: 1.3;  letter-spacing: -0.54px; }
+    .text-subheading    { line-height: 1.3;  letter-spacing: -0.69px; }
+    .text-heading-sm    { line-height: 1.3;  letter-spacing: -0.84px; }
+    .text-heading       { line-height: 1.35; letter-spacing: -0.4px;  }
+    .text-heading-lg    { line-height: 1;    letter-spacing: -1.68px; }
+    .text-display       { line-height: 1.05; letter-spacing: -2.22px; }
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Token values — light (Ease Health / Daurin palette)
+   ────────────────────────────────────────────────────────────────── */
+:root {
+    /* Canvas */
+    --background: #fffefc;
+    --foreground: #000000;
+
+    /* Card & popover — same warm-white canvas */
+    --card: #fffefc;
+    --card-foreground: #000000;
+    --popover: #fffefc;
+    --popover-foreground: #000000;
+
+    /* Primary action — Forest Ink */
+    --primary: #0f3e17;
+    --primary-foreground: #fffefc;
+
+    /* Secondary surface — Linen */
+    --secondary: #e1f4df;
+    --secondary-foreground: #0f3e17;
+
+    /* Muted — faintest surface tint */
+    --muted: #e1f4df;
+    --muted-foreground: #222222;
+
+    /* Accent — Mint Veil (hover surface) */
+    --accent: #cfe7d3;
+    --accent-foreground: #0f3e17;
+
+    /* Destructive — keep accessible red */
+    --destructive: #b3261e;
+    --destructive-foreground: #fffefc;
+
+    /* Structural — Hairline Gray */
+    --border: #e5e7eb;
+    --input: #e5e7eb;
+    --ring: #0f3e17;
+
+    /* Radius base */
+    --radius: 14px;
+
+    /* Charts — brand family */
+    --chart-1: #0f3e17;
+    --chart-2: #b1dbb8;
+    --chart-3: #b6ced5;
+    --chart-4: #cfe7d3;
+    --chart-5: #333333;
+
+    /* Sidebar */
+    --sidebar-background: #fffefc;
+    --sidebar: #fffefc;
+    --sidebar-foreground: #222222;
+    --sidebar-primary: #0f3e17;
+    --sidebar-primary-foreground: #fffefc;
+    --sidebar-accent: #cfe7d3;
+    --sidebar-accent-foreground: #0f3e17;
+    --sidebar-border: #e5e7eb;
+    --sidebar-ring: #0f3e17;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+   Dark mode — identical to light (DESIGN.md is light-only)
+   The toggle still works; it simply produces the same visual.
+   ────────────────────────────────────────────────────────────────── */
+.dark {
+    --background: #fffefc;
+    --foreground: #000000;
+
+    --card: #fffefc;
+    --card-foreground: #000000;
+    --popover: #fffefc;
+    --popover-foreground: #000000;
+
+    --primary: #0f3e17;
+    --primary-foreground: #fffefc;
+
+    --secondary: #e1f4df;
+    --secondary-foreground: #0f3e17;
+
+    --muted: #e1f4df;
+    --muted-foreground: #222222;
+
+    --accent: #cfe7d3;
+    --accent-foreground: #0f3e17;
+
+    --destructive: #b3261e;
+    --destructive-foreground: #fffefc;
+
+    --border: #e5e7eb;
+    --input: #e5e7eb;
+    --ring: #0f3e17;
+
+    --radius: 14px;
+
+    --chart-1: #0f3e17;
+    --chart-2: #b1dbb8;
+    --chart-3: #b6ced5;
+    --chart-4: #cfe7d3;
+    --chart-5: #333333;
+
+    --sidebar-background: #fffefc;
+    --sidebar: #fffefc;
+    --sidebar-foreground: #222222;
+    --sidebar-primary: #0f3e17;
+    --sidebar-primary-foreground: #fffefc;
+    --sidebar-accent: #cfe7d3;
+    --sidebar-accent-foreground: #0f3e17;
+    --sidebar-border: #e5e7eb;
+    --sidebar-ring: #0f3e17;
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+}
