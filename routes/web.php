@@ -41,6 +41,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [ListingSampahController::class, 'index'])->name('index');
         Route::get('/baru', [ListingSampahController::class, 'create'])->name('create');
         Route::post('/', [ListingSampahController::class, 'store'])->name('store');
+        Route::get('/{listing}/edit', [ListingSampahController::class, 'edit'])->name('edit');
+        Route::put('/{listing}', [ListingSampahController::class, 'update'])->name('update');
         Route::delete('/{listing}', [ListingSampahController::class, 'destroy'])->name('destroy');
         Route::post('/penawaran/{penawaran}/terima', [PenawaranController::class, 'terima'])->name('penawaran.terima');
         Route::post('/penawaran/{penawaran}/tolak', [PenawaranController::class, 'tolak'])->name('penawaran.tolak');

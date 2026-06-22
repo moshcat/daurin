@@ -98,6 +98,18 @@ function deleteListing(id: number): void {
                     </div>
                 </CardHeader>
                 <CardContent class="px-4 pb-4">
+                    <img
+                        v-if="item.foto_path"
+                        :src="`/storage/${item.foto_path}`"
+                        :alt="jenisLabel(item.jenis_sampah)"
+                        class="mb-3 h-40 w-full rounded-lg border object-cover"
+                    />
+                    <div
+                        v-else
+                        class="mb-3 flex h-40 w-full items-center justify-center rounded-lg border border-dashed bg-gray-50 text-3xl"
+                    >
+                        🗑️
+                    </div>
                     <div class="text-xl font-bold text-green-800">{{ formatRp(item.harga) }}</div>
                     <div class="text-sm text-gray-500 mt-0.5">{{ item.berat }} kg</div>
                     <div v-if="item.ai_label" class="mt-1 text-xs text-blue-600">
@@ -133,14 +145,21 @@ function deleteListing(id: number): void {
                     </div>
 
                     <div class="mt-3">
-                        <button
-                            v-if="item.status === 'tersedia'"
-                            @click="deleteListing(item.id)"
-                            class="rounded border border-red-300 px-3 py-1 text-xs text-red-600 hover:bg-red-50"
-                        >
-                            Hapus
-                        </button>
-                        <span v-else class="text-xs italic text-gray-400">Tidak dapat dihapus</span>
+                        <div v-if="item.status === 'tersedia'" class="flex gap-2">
+                            <a
+                                :href="`/rt/${item.id}/edit`"
+                                class="rounded border border-green-300 px-3 py-1 text-xs text-green-700 hover:bg-green-50"
+                            >
+                                Ubah
+                            </a>
+                            <button
+                                @click="deleteListing(item.id)"
+                                class="rounded border border-red-300 px-3 py-1 text-xs text-red-600 hover:bg-red-50"
+                            >
+                                Hapus
+                            </button>
+                        </div>
+                        <span v-else class="text-xs italic text-gray-400">Tidak dapat diubah</span>
                     </div>
                 </CardContent>
             </Card>

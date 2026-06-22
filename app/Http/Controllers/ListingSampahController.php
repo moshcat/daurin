@@ -6,11 +6,13 @@ use App\Enums\JenisSampah;
 use App\Enums\ListingStatus;
 use App\Enums\PenawaranStatus;
 use App\Models\ListingSampah;
+use App\Models\User;
 use App\Services\ClaimListing;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -41,14 +43,14 @@ class ListingSampahController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'jenis_sampah'   => ['required', 'string'],
-            'berat'          => ['required', 'numeric', 'min:1'],
-            'harga'          => ['required', 'numeric', 'min:0'],
-            'foto'           => ['nullable', 'file', 'image', 'max:5120'],
-            'ai_label'       => ['nullable', 'string'],
-            'ai_confidence'  => ['nullable', 'numeric', 'min:0', 'max:1'],
-            'lat'            => ['nullable', 'numeric'],
-            'lng'            => ['nullable', 'numeric'],
+            'jenis_sampah' => ['required', 'string'],
+            'berat' => ['required', 'numeric', 'min:1'],
+            'harga' => ['required', 'numeric', 'min:0'],
+            'foto' => ['nullable', 'file', 'image', 'max:5120'],
+            'ai_label' => ['nullable', 'string'],
+            'ai_confidence' => ['nullable', 'numeric', 'min:0', 'max:1'],
+            'lat' => ['nullable', 'numeric'],
+            'lng' => ['nullable', 'numeric'],
         ], [
             'berat.min' => 'Berat minimum untuk dijual adalah 1 kg.',
         ]);
@@ -58,46 +60,105 @@ class ListingSampahController extends Controller
             $fotoPath = $request->file('foto')->store('foto-sampah', 'public');
         }
 
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         ListingSampah::create([
-            'user_id'        => $user->id,
-            'jenis_sampah'   => $data['jenis_sampah'],
-            'berat'          => $data['berat'],
-            'harga'          => $data['harga'],
-            'foto_path'      => $fotoPath,
-            'ai_label'       => $data['ai_label'] ?? null,
-            'ai_confidence'  => $data['ai_confidence'] ?? null,
-            'lat'            => $data['lat'] ?? $user->lat,
-            'lng'            => $data['lng'] ?? $user->lng,
-            'status'         => ListingStatus::Tersedia->value,
+            'user_id' => $user->id,
+            'jenis_sampah' => $data['jenis_sampah'],
+            'berat' => $data['berat'],
+            'harga' => $data['harga'],
+            'foto_path' => $fotoPath,
+            'ai_label' => $data['ai_label'] ?? null,
+            'ai_confidence' => $data['ai_confidence'] ?? null,
+            'lat' => $data['lat'] ?? $user->lat,
+            'lng' => $data['lng'] ?? $user->lng,
+            'status' => ListingStatus::Tersedia->value,
         ]);
 
         return redirect()->route('rt.index')->with('success', 'Listing berhasil dibuat.');
     }
 
+    public function edit(ListingSampah $listing): Response
+    {
+        $this->ensureEditable($listing);
+
+        return Inertia::render('Rt/Edit', [
+            'listing' => $listing,
+            'jenisSampahOptions' => array_map(
+                fn (JenisSampah $j) => ['value' => $j->value, 'label' => $j->label()],
+                JenisSampah::cases()
+            ),
+        ]);
+    }
+
+    public function update(Request $request, ListingSampah $listing): RedirectResponse
+    {
+        $this->ensureEditable($listing);
+
+        $data = $request->validate([
+            'jenis_sampah' => ['required', 'string'],
+            'berat' => ['required', 'numeric', 'min:1'],
+            'harga' => ['required', 'numeric', 'min:0'],
+            'foto' => ['nullable', 'file', 'image', 'max:5120'],
+            'ai_label' => ['nullable', 'string'],
+            'ai_confidence' => ['nullable', 'numeric', 'min:0', 'max:1'],
+            'lat' => ['nullable', 'numeric'],
+            'lng' => ['nullable', 'numeric'],
+        ], [
+            'berat.min' => 'Berat minimum untuk dijual adalah 1 kg.',
+        ]);
+
+        $attributes = [
+            'jenis_sampah' => $data['jenis_sampah'],
+            'berat' => $data['berat'],
+            'harga' => $data['harga'],
+            'lat' => $data['lat'] ?? $listing->lat,
+            'lng' => $data['lng'] ?? $listing->lng,
+        ];
+
+        if ($request->hasFile('foto')) {
+            if ($listing->foto_path) {
+                Storage::disk('public')->delete($listing->foto_path);
+            }
+
+            $attributes['foto_path'] = $request->file('foto')->store('foto-sampah', 'public');
+            $attributes['ai_label'] = $data['ai_label'] ?? null;
+            $attributes['ai_confidence'] = $data['ai_confidence'] ?? null;
+        }
+
+        $listing->update($attributes);
+
+        return redirect()->route('rt.index')->with('success', 'Listing berhasil diperbarui.');
+    }
+
     public function destroy(ListingSampah $listing): RedirectResponse
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        abort_if(
-            $listing->user_id !== $user->id || $listing->status !== ListingStatus::Tersedia,
-            403,
-            'Tidak dapat menghapus listing ini.'
-        );
+        $this->ensureEditable($listing, 'Tidak dapat menghapus listing ini.');
 
         $listing->delete();
 
         return redirect()->back()->with('success', 'Listing dihapus.');
     }
 
+    /**
+     * Ensure the listing belongs to the authenticated rumah tangga and is still
+     * editable (only an unclaimed "tersedia" listing may be changed or removed).
+     */
+    private function ensureEditable(ListingSampah $listing, string $message = 'Tidak dapat mengubah listing ini.'): void
+    {
+        abort_if(
+            $listing->user_id !== Auth::id() || $listing->status !== ListingStatus::Tersedia,
+            403,
+            $message
+        );
+    }
+
     // ─── Pengepul ────────────────────────────────────────────────────────────
 
     public function ketersediaan(): Response
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         $handledJenis = $user->pengepulJenis()->pluck('jenis_sampah')->toArray();
@@ -109,21 +170,21 @@ class ListingSampahController extends Controller
             ->get();
 
         return Inertia::render('Pengepul/Ketersediaan', [
-            'listings'     => $listings,
+            'listings' => $listings,
             'handledJenis' => $handledJenis,
         ]);
     }
 
     public function klaim(ListingSampah $listing, ClaimListing $service): RedirectResponse
     {
-        /** @var \App\Models\User $user */
+        /** @var User $user */
         $user = Auth::user();
 
         try {
             $service->handle($user, $listing);
 
             return redirect()->back()->with('success', 'Listing berhasil diklaim.');
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return redirect()->back()->withErrors($e->errors());
         }
     }

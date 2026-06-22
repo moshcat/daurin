@@ -30,7 +30,11 @@ interface LelangProp {
         berat: number;
         peruntukan: string | null;
         pengepul: string;
-        source: { jenis_label: string; berat: number; rt: string | null } | null;
+        source: {
+            jenis_label: string;
+            berat: number;
+            rt: string | null;
+        } | null;
     };
     bids: Bid[];
 }
@@ -73,14 +77,21 @@ function initFromProps(l: LelangProp): void {
 }
 
 // Sinkron ke kebenaran server pada setiap reload Inertia.
-watch(() => props.lelang, (l) => initFromProps(l), { immediate: true });
+watch(
+    () => props.lelang,
+    (l) => initFromProps(l),
+    { immediate: true },
+);
 
 // ─── Countdown ──────────────────────────────────────────────────────────────
 const now = ref(Date.now());
 let timer: number | undefined;
 
 const sisaDetik = computed(() =>
-    Math.max(0, Math.floor((new Date(waktuSelesai.value).getTime() - now.value) / 1000)),
+    Math.max(
+        0,
+        Math.floor((new Date(waktuSelesai.value).getTime() - now.value) / 1000),
+    ),
 );
 
 const countdown = computed(() => {
@@ -94,7 +105,9 @@ const countdown = computed(() => {
 });
 
 const isOpen = computed(() => status.value === 'berlangsung');
-const isSnipe = computed(() => isOpen.value && sisaDetik.value <= 60 && sisaDetik.value > 0);
+const isSnipe = computed(
+    () => isOpen.value && sisaDetik.value <= 60 && sisaDetik.value > 0,
+);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function formatRp(n: number | null): string {
@@ -102,7 +115,11 @@ function formatRp(n: number | null): string {
 }
 
 function formatTime(s: string): string {
-    return new Date(s).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return new Date(s).toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+    });
 }
 
 // ─── Echo real-time ─────────────────────────────────────────────────────────
@@ -151,7 +168,10 @@ onMounted(() => {
     window.Echo.join(`lelang.${props.lelang.id}`)
         .here((members: Member[]) => (penonton.value = members))
         .joining((m: Member) => penonton.value.push(m))
-        .leaving((m: Member) => (penonton.value = penonton.value.filter((x) => x.id !== m.id)))
+        .leaving(
+            (m: Member) =>
+                (penonton.value = penonton.value.filter((x) => x.id !== m.id)),
+        )
         .listen('.BidPlaced', onBid)
         .listen('.LelangClosed', onClosed);
 
@@ -165,6 +185,7 @@ onUnmounted(() => {
     if (timer) {
         clearInterval(timer);
     }
+
     if (typeof window !== 'undefined' && window.Echo) {
         window.Echo.leave(`lelang.${props.lelang.id}`);
     }
@@ -173,10 +194,13 @@ onUnmounted(() => {
 // ─── Actions ──────────────────────────────────────────────────────────────────
 function submitBid(): void {
     const harga = Number(tawarHarga.value);
+
     if (!harga || harga < minimalBid.value) {
         errorBid.value = `Tawaran minimal ${formatRp(minimalBid.value)}.`;
+
         return;
     }
+
     errorBid.value = '';
 
     router.post(
@@ -185,87 +209,151 @@ function submitBid(): void {
         {
             preserveScroll: true,
             onSuccess: () => (tawarHarga.value = ''),
-            onError: (e) => (errorBid.value = e.harga ?? e.lelang ?? 'Gagal menawar.'),
+            onError: (e) =>
+                (errorBid.value = e.harga ?? e.lelang ?? 'Gagal menawar.'),
         },
     );
 }
 
 function buyout(): void {
-    if (!confirm(`Beli langsung seharga ${formatRp(props.lelang.harga_buyout)}?`)) {
+    if (
+        !confirm(
+            `Beli langsung seharga ${formatRp(props.lelang.harga_buyout)}?`,
+        )
+    ) {
         return;
     }
-    router.post(`/lelang/${props.lelang.id}/buyout`, {}, { preserveScroll: true });
+
+    router.post(
+        `/lelang/${props.lelang.id}/buyout`,
+        {},
+        { preserveScroll: true },
+    );
 }
 
 function cancel(): void {
     if (!confirm('Batalkan negosiasi ini?')) {
         return;
     }
-    router.delete(`/pengepul/lelang/${props.lelang.id}`, { preserveScroll: true });
+
+    router.delete(`/pengepul/lelang/${props.lelang.id}`, {
+        preserveScroll: true,
+    });
 }
 
 function bayar(): void {
     if (!props.pesanan || !confirm('Bayar pesanan ini (simulasi)?')) {
         return;
     }
-    router.post(`/industri/pesanan/${props.pesanan.id}/bayar`, {}, { preserveScroll: true });
+
+    router.post(
+        `/industri/pesanan/${props.pesanan.id}/bayar`,
+        {},
+        { preserveScroll: true },
+    );
 }
 </script>
 
 <template>
     <Head title="Ruang Negosiasi" />
 
-    <div class="mx-auto flex h-full w-full max-w-3xl flex-1 flex-col gap-4 p-6">
+    <div
+        class="mx-auto flex h-full w-full max-w-3xl flex-1 flex-col gap-4 p-4 sm:p-6"
+    >
         <div class="flex items-center justify-between">
-            <a href="javascript:history.back()" class="text-sm text-green-700 hover:underline">← Kembali</a>
+            <a
+                href="javascript:history.back()"
+                class="text-sm text-green-700 hover:underline"
+                >← Kembali</a
+            >
             <span class="flex items-center gap-1.5 text-xs text-gray-500">
-                <span class="inline-block h-2 w-2 rounded-full bg-green-500"></span>
+                <span
+                    class="inline-block h-2 w-2 rounded-full bg-green-500"
+                ></span>
                 {{ penonton.length }} menonton
             </span>
         </div>
 
         <div>
-            <h1 class="text-2xl font-bold text-green-900">💬 Negosiasi Harga</h1>
-            <p class="text-sm text-gray-500">Penawaran terbuka — tawaran tertinggi saat waktu habis yang menang.</p>
+            <h1 class="text-2xl font-bold text-green-900">
+                💬 Negosiasi Harga
+            </h1>
+            <p class="text-sm text-gray-500">
+                Penawaran terbuka — tawaran tertinggi saat waktu habis yang
+                menang.
+            </p>
         </div>
 
         <!-- Status & harga tertinggi -->
-        <Card class="border-2" :class="isOpen ? 'border-green-300' : 'border-gray-200'">
-            <CardContent class="flex flex-col items-center gap-1 py-6">
-                <span class="text-xs uppercase tracking-wide text-gray-500">Tawaran Tertinggi</span>
-                <span class="text-4xl font-extrabold text-green-800">
+        <Card
+            class="border-2"
+            :class="isOpen ? 'border-green-300' : 'border-gray-200'"
+        >
+            <CardContent class="flex flex-col items-center gap-1 px-3 py-6">
+                <span class="text-xs tracking-wide text-gray-500 uppercase"
+                    >Tawaran Tertinggi</span
+                >
+                <span
+                    class="text-center text-3xl leading-tight font-extrabold text-green-800 tabular-nums sm:text-4xl"
+                >
                     {{ formatRp(hargaTertinggi ?? lelang.harga_awal) }}
                 </span>
-                <span v-if="hargaTertinggi === null" class="text-xs text-gray-400">
+                <span
+                    v-if="hargaTertinggi === null"
+                    class="text-xs text-gray-400"
+                >
                     Harga awal · belum ada tawaran
                 </span>
 
                 <div v-if="isOpen" class="mt-3 flex flex-col items-center">
                     <span
                         class="rounded-lg px-4 py-1 font-mono text-2xl font-bold tabular-nums"
-                        :class="isSnipe ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-gray-100 text-gray-700'"
+                        :class="
+                            isSnipe
+                                ? 'animate-pulse bg-red-100 text-red-700'
+                                : 'bg-gray-100 text-gray-700'
+                        "
                     >
                         {{ countdown }}
                     </span>
-                    <span v-if="isSnipe" class="mt-1 text-xs font-medium text-red-600">
+                    <span
+                        v-if="isSnipe"
+                        class="mt-1 text-xs font-medium text-red-600"
+                    >
                         ⚡ Waktu kritis — tawaran memperpanjang +60 dtk
                     </span>
-                    <span v-else class="mt-1 text-xs text-gray-400">sisa waktu</span>
+                    <span v-else class="mt-1 text-xs text-gray-400"
+                        >sisa waktu</span
+                    >
                 </div>
 
                 <!-- Hasil akhir -->
                 <div v-else class="mt-3 text-center">
-                    <div v-if="status === 'selesai'" class="rounded-lg bg-green-50 px-4 py-2">
-                        <p class="text-sm font-semibold text-green-800">🏆 Negosiasi Selesai</p>
+                    <div
+                        v-if="status === 'selesai'"
+                        class="rounded-lg bg-green-50 px-4 py-2"
+                    >
+                        <p class="text-sm font-semibold text-green-800">
+                            🏆 Negosiasi Selesai
+                        </p>
                         <p class="text-sm text-gray-600">
-                            Pemenang: <span class="font-medium">{{ pemenangNama }}</span> ·
+                            Pemenang:
+                            <span class="font-medium">{{ pemenangNama }}</span>
+                            ·
                             {{ formatRp(hargaFinal) }}
                         </p>
                     </div>
-                    <div v-else-if="status === 'gagal'" class="rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-700">
-                        Negosiasi berakhir tanpa pemenang (tanpa tawaran / di bawah harga minimum).
+                    <div
+                        v-else-if="status === 'gagal'"
+                        class="rounded-lg bg-amber-50 px-4 py-2 text-sm text-amber-700"
+                    >
+                        Negosiasi berakhir tanpa pemenang (tanpa tawaran / di
+                        bawah harga minimum).
                     </div>
-                    <div v-else class="rounded-lg bg-gray-50 px-4 py-2 text-sm text-gray-600">
+                    <div
+                        v-else
+                        class="rounded-lg bg-gray-50 px-4 py-2 text-sm text-gray-600"
+                    >
                         Negosiasi dibatalkan.
                     </div>
                 </div>
@@ -273,22 +361,31 @@ function bayar(): void {
         </Card>
 
         <!-- Pembayaran (pemenang) -->
-        <Card v-if="isWinner && status === 'selesai' && pesanan" class="border-green-300">
-            <CardContent class="flex items-center justify-between py-4">
+        <Card
+            v-if="isWinner && status === 'selesai' && pesanan"
+            class="border-green-300"
+        >
+            <CardContent
+                class="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"
+            >
                 <div>
-                    <p class="text-sm font-semibold text-green-900">Pembayaran</p>
-                    <p class="text-xs text-gray-500">Selesaikan pembayaran untuk memproses pesanan.</p>
+                    <p class="text-sm font-semibold text-green-900">
+                        Pembayaran
+                    </p>
+                    <p class="text-xs text-gray-500">
+                        Selesaikan pembayaran untuk memproses pesanan.
+                    </p>
                 </div>
                 <span
                     v-if="pesanan.sudah_dibayar"
-                    class="rounded-lg bg-green-100 px-4 py-2 text-sm font-semibold text-green-700"
+                    class="shrink-0 rounded-lg bg-green-100 px-4 py-2 text-center text-sm font-semibold text-green-700"
                 >
                     ✅ Lunas
                 </span>
                 <button
                     v-else
                     @click="bayar"
-                    class="rounded-lg bg-green-700 px-5 py-2 text-sm font-semibold text-white hover:bg-green-800"
+                    class="shrink-0 rounded-lg bg-green-700 px-5 py-2 text-sm font-semibold text-white hover:bg-green-800"
                 >
                     💳 Bayar (Simulasi)
                 </button>
@@ -297,19 +394,43 @@ function bayar(): void {
 
         <!-- Detail bahan baku + traceability -->
         <Card class="border">
-            <CardHeader class="pb-2"><CardTitle class="text-sm">Barang Dinegosiasikan</CardTitle></CardHeader>
+            <CardHeader class="pb-2"
+                ><CardTitle class="text-sm"
+                    >Barang Dinegosiasikan</CardTitle
+                ></CardHeader
+            >
             <CardContent class="grid grid-cols-2 gap-2 pb-4 text-sm">
-                <div><span class="text-gray-500">Jenis:</span> {{ lelang.bahan_baku.jenis_label }}</div>
-                <div><span class="text-gray-500">Berat:</span> {{ lelang.bahan_baku.berat }} kg</div>
-                <div><span class="text-gray-500">Pengepul:</span> {{ lelang.bahan_baku.pengepul }}</div>
-                <div><span class="text-gray-500">Harga Awal:</span> {{ formatRp(lelang.harga_awal) }}</div>
-                <div v-if="lelang.bahan_baku.peruntukan" class="col-span-2">
-                    <span class="text-gray-500">Peruntukan:</span> {{ lelang.bahan_baku.peruntukan }}
+                <div>
+                    <span class="text-gray-500">Jenis:</span>
+                    {{ lelang.bahan_baku.jenis_label }}
                 </div>
-                <div v-if="lelang.bahan_baku.source" class="col-span-2 text-xs text-blue-600">
-                    🔗 Asal: {{ lelang.bahan_baku.source.jenis_label }}
-                    ({{ lelang.bahan_baku.source.berat }} kg)
-                    <template v-if="lelang.bahan_baku.source.rt"> · RT: {{ lelang.bahan_baku.source.rt }}</template>
+                <div>
+                    <span class="text-gray-500">Berat:</span>
+                    {{ lelang.bahan_baku.berat }} kg
+                </div>
+                <div>
+                    <span class="text-gray-500">Pengepul:</span>
+                    {{ lelang.bahan_baku.pengepul }}
+                </div>
+                <div>
+                    <span class="text-gray-500">Harga Awal:</span>
+                    {{ formatRp(lelang.harga_awal) }}
+                </div>
+                <div v-if="lelang.bahan_baku.peruntukan" class="col-span-2">
+                    <span class="text-gray-500">Peruntukan:</span>
+                    {{ lelang.bahan_baku.peruntukan }}
+                </div>
+                <div
+                    v-if="lelang.bahan_baku.source"
+                    class="col-span-2 text-xs text-blue-600"
+                >
+                    🔗 Asal: {{ lelang.bahan_baku.source.jenis_label }} ({{
+                        lelang.bahan_baku.source.berat
+                    }}
+                    kg)
+                    <template v-if="lelang.bahan_baku.source.rt">
+                        · RT: {{ lelang.bahan_baku.source.rt }}</template
+                    >
                 </div>
             </CardContent>
         </Card>
@@ -318,7 +439,9 @@ function bayar(): void {
         <Card v-if="canBid && isOpen" class="border-green-200">
             <CardContent class="space-y-3 py-4">
                 <div>
-                    <Label class="text-xs">Tawaran Anda (min. {{ formatRp(minimalBid) }})</Label>
+                    <Label class="text-xs"
+                        >Tawaran Anda (min. {{ formatRp(minimalBid) }})</Label
+                    >
                     <Input
                         v-model="tawarHarga"
                         type="number"
@@ -326,7 +449,9 @@ function bayar(): void {
                         class="mt-1"
                         @keyup.enter="submitBid"
                     />
-                    <p v-if="errorBid" class="mt-1 text-xs text-red-500">{{ errorBid }}</p>
+                    <p v-if="errorBid" class="mt-1 text-xs text-red-500">
+                        {{ errorBid }}
+                    </p>
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <button
@@ -361,27 +486,60 @@ function bayar(): void {
 
         <!-- Riwayat tawaran (live) -->
         <div>
-            <h2 class="mb-2 text-sm font-semibold text-gray-700">Riwayat Tawaran ({{ bids.length }})</h2>
-            <div v-if="bids.length === 0" class="rounded-lg border border-dashed py-6 text-center text-sm text-gray-400">
+            <h2 class="mb-2 text-sm font-semibold text-gray-700">
+                Riwayat Tawaran ({{ bids.length }})
+            </h2>
+            <div
+                v-if="bids.length === 0"
+                class="rounded-lg border border-dashed py-6 text-center text-sm text-gray-400"
+            >
                 Belum ada tawaran. Jadilah yang pertama!
             </div>
-            <transition-group v-else name="bid" tag="div" class="flex flex-col gap-2">
+            <transition-group
+                v-else
+                name="bid"
+                tag="div"
+                class="flex flex-col gap-2"
+            >
                 <div
                     v-for="(b, i) in bids"
                     :key="b.id"
-                    class="flex items-center justify-between rounded-xl border px-4 py-2.5"
-                    :class="i === 0 ? 'border-green-300 bg-green-50' : 'border-gray-100 bg-white'"
+                    class="flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 sm:px-4"
+                    :class="
+                        i === 0
+                            ? 'border-green-300 bg-green-50'
+                            : 'border-gray-100 bg-white'
+                    "
                 >
-                    <div class="flex items-center gap-2">
-                        <span v-if="i === 0" class="text-xs font-bold text-green-700">TERTINGGI</span>
-                        <span class="text-sm text-gray-600">{{ b.industri_nama }}</span>
-                        <span v-if="b.is_buyout" class="rounded bg-amber-100 px-1.5 text-[10px] text-amber-700">buyout</span>
+                    <div class="flex min-w-0 flex-1 items-center gap-2">
+                        <span
+                            v-if="i === 0"
+                            class="shrink-0 text-[10px] font-bold text-green-700 sm:text-xs"
+                            >TERTINGGI</span
+                        >
+                        <span class="truncate text-sm text-gray-600">{{
+                            b.industri_nama
+                        }}</span>
+                        <span
+                            v-if="b.is_buyout"
+                            class="shrink-0 rounded bg-amber-100 px-1.5 text-[10px] text-amber-700"
+                            >buyout</span
+                        >
                     </div>
-                    <div class="flex items-center gap-3">
-                        <span class="font-bold" :class="i === 0 ? 'text-green-800' : 'text-gray-700'">
+                    <div
+                        class="flex shrink-0 flex-col items-end sm:flex-row sm:items-center sm:gap-3"
+                    >
+                        <span
+                            class="font-bold tabular-nums"
+                            :class="
+                                i === 0 ? 'text-green-800' : 'text-gray-700'
+                            "
+                        >
                             {{ formatRp(b.harga) }}
                         </span>
-                        <span class="text-[10px] text-gray-400">{{ formatTime(b.created_at) }}</span>
+                        <span class="text-[10px] text-gray-400">{{
+                            formatTime(b.created_at)
+                        }}</span>
                     </div>
                 </div>
             </transition-group>
