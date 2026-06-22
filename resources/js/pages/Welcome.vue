@@ -1,14 +1,10 @@
 <script setup lang="ts">
-import { Head, Link, WhenVisible, usePage } from '@inertiajs/vue3'
-import { computed, ref, onMounted, onUnmounted } from 'vue'
-import {
-    productFromBahanBaku,
-    productFromBahanJadi,
-    productFromListing,
-    formatRp
-} from '@/lib/listing'
-import type {BahanBakuItem, BahanJadiItem, ListingItem, MarketProduct} from '@/lib/listing';
-import { dashboard, login } from '@/routes'
+import { Head, Link, usePage } from '@inertiajs/vue3'
+import { computed, ref } from 'vue'
+import ProductCard from '@/components/ProductCard.vue'
+import Navbar from '@/components/Navbar.vue'
+import { productFromBahanBaku, productFromBahanJadi, productFromListing } from '@/lib/listing'
+import type { BahanBakuItem, BahanJadiItem, ListingItem } from '@/lib/listing'
 import { store as registerRoute } from '@/routes/register'
 
 const props = defineProps<{
@@ -19,1162 +15,928 @@ const props = defineProps<{
     stats: { listingCount: number; bahanBakuCount: number; bahanJadiCount: number }
 }>()
 
+const page = usePage()
+const authUser = computed(() => (page.props.auth as { user?: { role?: string } } | undefined)?.user ?? null)
+const isAuth = computed(() => Boolean(authUser.value))
+
 const sampahProducts = computed(() => props.listings.map(productFromListing))
 const bahanBakuProducts = computed(() => props.bahanBaku.map(productFromBahanBaku))
 const bahanJadiProducts = computed(() => props.bahanJadi.map(productFromBahanJadi))
 
-const page = usePage()
-const isAuth = computed(() => Boolean((page.props.auth as { user?: unknown } | undefined)?.user))
+// Preview gabungan untuk landing; daftar lengkap + filter ada di halaman /etalase.
+const previewProducts = computed(() =>
+    [...bahanBakuProducts.value, ...sampahProducts.value, ...bahanJadiProducts.value].slice(0, 8),
+)
 
-// CTA "Beli" tiap kartu: bahan baku yang dilelang → ruang lelang (jalur beli nyata);
-// lainnya → login (tamu) atau dashboard (sudah login) untuk lanjut transaksi.
-function ctaLabel(product: MarketProduct): string {
-    if (product.lelangId) {
-        return 'Nego Harga'
-    }
-    return isAuth.value ? 'Beli' : 'Masuk untuk Beli'
+const heroStats = computed(() => [
+    { value: props.stats.listingCount, label: 'Sampah' },
+    { value: props.stats.bahanBakuCount, label: 'Bahan Baku' },
+    { value: props.stats.bahanJadiCount, label: 'Bahan Jadi' },
+])
+
+// Logo bisa ditaruh di public/partners/<file>.png; sebelum ada file, inisial tampil.
+const partners = [
+    { name: 'PT. Makmur Lautan Sejahtera', logo: '/pngtree-fish-logo-design-ready-to-use-png-image_4385061.png' },
+    { name: 'PT. Perikanan Nusantara Jaya', logo: '/pngtree-fish-logo-design-ready-to-use-png-image_4385061.png' },
+    { name: 'PT. Bahari Sentosa Abadi', logo: '/pngtree-fish-logo-design-ready-to-use-png-image_4385061.png' },
+    { name: 'PT. Teknologi Akuakultur', logo: '/pngtree-fish-logo-design-ready-to-use-png-image_4385061.png' },
+]
+const faqs = [
+    { q: 'Apakah layanan di Daurin dikenakan biaya?', a: 'Pendaftaran dan penggunaan dasar aplikasi Daurin 100% gratis. Kami hanya mengenakan biaya admin kecil jika transaksi jual-beli berhasil dilakukan.' },
+    { q: 'Apakah program kemitraan Daurin bersertifikasi?', a: 'Ya, setiap mitra resmi yang terdaftar akan mendapatkan sertifikat keanggotaan dan sertifikat kontribusi lingkungan tahunan.' },
+    { q: 'Apa saja yang akan didapatkan oleh mitra/penjual?', a: 'Anda akan mendapatkan akses langsung ke ribuan pengepul, kepastian harga yang transparan, riwayat transaksi lengkap, serta panduan memilah sampah.' },
+    { q: 'Apakah sertifikat dari Daurin bisa digunakan untuk keperluan CSR?', a: 'Tentu, sertifikat emisi dan kontribusi lingkungan dari Daurin dapat dilampirkan pada laporan keberlanjutan (sustainability report) perusahaan Anda.' },
+    { q: 'Berapa lama proses penjemputan yang diselenggarakan oleh Daurin?', a: 'Penjemputan dilakukan selambat-lambatnya 1x24 jam setelah Anda melakukan konfirmasi pesanan di aplikasi.' },
+    { q: 'Apakah tersedia layanan konsultasi secara daring (online)?', a: 'Ya, tim support kami tersedia 24/7 melalui fitur Live Chat di aplikasi untuk membantu segala kebutuhan daur ulang Anda.' },
+]
+
+const activeFaq = ref<number | null>(null)
+const toggleFaq = (index: number) => {
+    activeFaq.value = activeFaq.value === index ? null : index
 }
-
-function ctaHref(product: MarketProduct): string {
-    if (product.lelangId) {
-        return `/lelang/${product.lelangId}`
-    }
-    return isAuth.value ? '/dashboard' : '/login'
-}
-
-// Scroll logic for header
-const isScrolled = ref(false)
-let lastScroll = 0
-const handleScroll = () => {
-    const currentScroll = window.scrollY
-    if (currentScroll > 60 && currentScroll > lastScroll) {
-        isScrolled.value = true
-    } else {
-        isScrolled.value = false
-    }
-    lastScroll = currentScroll
-}
-
-onMounted(() => {
-    window.addEventListener('scroll', handleScroll)
-})
-onUnmounted(() => {
-    window.removeEventListener('scroll', handleScroll)
-})
 </script>
 
 <template>
-  <Head title="Daurin - Marketplace Daur Ulang">
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  </Head>
+    <Head title="Daurin — Marketplace Daur Ulang">
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    </Head>
 
-  <div class="daurin-landing">
-    <!-- Top Bar & Main Header inside dark green wrapper -->
-    <div class="header-wrapper" :class="{ 'header-scrolled': isScrolled }">
-      <!-- Top Bar -->
-      <div class="top-bar">
-        <div class="container top-bar-inner">
-          <div class="top-bar-left">
-            <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-            </svg>
-            Hubungi Kami : (021) 555-0123
-          </div>
-          <div class="top-bar-right">
-            <select aria-label="Bahasa">
-              <option value="id">Indonesian</option>
-              <option value="en">English</option>
-            </select>
-            <div class="top-icons">
-              <Link v-if="$page.props.auth.user" :href="dashboard()" class="icon-btn-top text-xs px-3 w-auto rounded-full text-white font-bold tracking-wider" aria-label="Dashboard">
-                Dashboard
-              </Link>
-              <template v-else>
-                <Link :href="login()" class="icon-btn-top text-xs px-3 w-auto rounded-full text-white font-bold tracking-wider" aria-label="Masuk">
-                  Masuk
-                </Link>
-                <Link :href="registerRoute.url()" class="icon-btn-top text-xs px-3 w-auto rounded-full bg-bright-green text-dark-green font-bold tracking-wider hover:bg-bright-green-hover" style="background-color: var(--color-bright-green); color: var(--color-dark-green);" aria-label="Daftar">
-                  Daftar
-                </Link>
-              </template>
+    <div class="lp">
+        <Navbar />
+
+        <main>
+            <!-- ── Hero ── -->
+            <section class="lp-container hero">
+                <div class="hero-left">
+                    <h1 class="hero-title">Ubah sampah terpilah jadi bahan baku bernilai</h1>
+                    <p class="hero-desc">
+                        Marketplace daur ulang yang menghubungkan rumah tangga, pengepul, dan
+                        industri — pilah, jual, negosiasi harga, hingga diolah kembali.
+                    </p>
+                    <div class="hero-cta">
+                        <a href="#etalase" class="btn btn-primary btn-lg">Lihat Etalase</a>
+                        <a href="#etalase" class="link-underline">Pelajari lebih lanjut</a>
+                    </div>
+
+                    <div class="stat-card desktop-stat">
+                        <div v-for="s in heroStats" :key="s.label" class="stat-item">
+                            <div class="stat-value">{{ s.value }}</div>
+                            <div class="stat-label">{{ s.label }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hero-art">
+                    <img src="/landinghero.png" alt="Ilustrasi daur ulang Daurin" class="hero-img" />
+                </div>
+
+                <div class="stat-card mobile-stat">
+                    <div v-for="s in heroStats" :key="s.label" class="stat-item">
+                        <div class="stat-value">{{ s.value }}</div>
+                        <div class="stat-label">{{ s.label }}</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── Mitra ── -->
+            <section class="lp-container partners">
+                <h2 class="partners-title">Bekerja sama dengan</h2>
+                <div class="partners-row">
+                    <div v-for="(p, index) in partners" :key="index" class="partner">
+                        <div class="partner-logo">
+                            <img :src="p.logo" :alt="p.name" class="partner-img" onerror="this.style.display='none'" />
+                        </div>
+                        <span class="partner-name">{{ p.name }}</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── Etalase (preview gabungan) ── -->
+            <section id="etalase" class="lp-container section">
+                <div class="section-head row">
+                    <div>
+                        <h2>Etalase Daur Ulang</h2>
+                        <p class="muted">Sampah terpilah, bahan baku, hingga bahan jadi — dalam satu marketplace.</p>
+                    </div>
+                    <Link href="/etalase" class="link-underline">Lihat Semua →</Link>
+                </div>
+
+                <div v-if="previewProducts.length === 0" class="empty-state">
+                    Belum ada produk tersedia.
+                </div>
+
+                <div v-else class="product-grid">
+                    <ProductCard
+                        v-for="product in previewProducts"
+                        :key="`${product.layer}-${product.id}`"
+                        :product="product"
+                    />
+                </div>
+            </section>
+
+            <!-- ── FAQ ── -->
+            <section class="lp-container section faq-section">
+                <div class="section-head center faq-head">
+                    <h2 class="faq-title">Frequently Asked Questions</h2>
+                    <p class="muted faq-subtitle">Pertanyaan-pertanyaan yang sering ditanyakan oleh calon mitra sebelum mendaftar di Daurin</p>
+                </div>
+                <div class="faq-list">
+                    <div v-for="(faq, index) in faqs" :key="index" class="faq-item">
+                        <button class="faq-question" @click="toggleFaq(index)">
+                            <span class="faq-q-text">{{ faq.q }}</span>
+                            <span class="faq-icon">{{ activeFaq === index ? '−' : '+' }}</span>
+                        </button>
+                        <div class="faq-answer" v-show="activeFaq === index">
+                            <p>{{ faq.a }}</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ── CTA ── -->
+            <section class="lp-container cta-section">
+                <div class="cta-banner">
+                    <h2 class="cta-title">Siap untuk mengubah masa depan bumi?</h2>
+                    <p class="cta-desc">
+                        Daftar sekarang, dan mulai perjalananmu menuju lingkungan yang lebih hijau serta masa depan yang berkelanjutan.
+                    </p>
+                    <Link :href="registerRoute.url()" class="btn cta-btn">Daftar Sekarang</Link>
+                </div>
+            </section>
+        </main>
+
+        <!-- ── Footer ── -->
+        <footer id="kontak" class="lp-footer">
+            <div class="lp-container footer-grid">
+                <div class="footer-brand">
+                    <Link href="/" class="brand">
+                        <img src="/logo.png" alt="Daurin" style="height: 32px; width: auto;" />
+                        <span class="brand-name">Daurin</span>
+                    </Link>
+                    <p class="muted">
+                        Marketplace daur ulang tiga lapis yang menghubungkan rumah tangga,
+                        pengepul, dan industri untuk masa depan yang lebih hijau.
+                    </p>
+                    <p class="footer-copy">© Copyright PT LESTARI DAUR NUSANTARA 2026</p>
+                </div>
+                <div class="footer-col">
+                    <h4>Contact</h4>
+                    <ul>
+                        <li>support@daurin.id</li>
+                        <li>Jl. Lingkungan Hijau No. 12, Jakarta</li>
+                        <li>+62 811 2345 678</li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Kategori</h4>
+                    <ul>
+                        <li>Kertas &amp; Kardus</li>
+                        <li>Plastik (PET/HDPE)</li>
+                        <li>Logam &amp; Kaleng</li>
+                        <li>Elektronik</li>
+                    </ul>
+                </div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Main Header -->
-      <header class="container">
-        <div class="main-header">
-          <Link href="/" class="logo">
-            <img src="/logo.png" alt="Daurin Logo" style="height: 32px; width: auto; object-fit: contain;" onerror="this.style.display='none'">
-          </Link>
-
-          <div class="nav-pill">
-            <div class="nav-left-section">
-              <button class="btn-categories">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="3" y1="12" x2="21" y2="12"></line>
-                  <line x1="3" y1="6" x2="21" y2="6"></line>
-                  <line x1="3" y1="18" x2="21" y2="18"></line>
-                </svg>
-                Kategori
-              </button>
-              <nav class="main-nav-links">
-                <Link href="/" class="nav-link active">Beranda</Link>
-                <a href="#etalase" class="nav-link">Etalase</a>
-                <a href="#" class="nav-link">Cara Kerja</a>
-                <a href="#" class="nav-link">Mitra Pengepul</a>
-              </nav>
-            </div>
-
-            <div class="search-wrapper">
-              <input type="text" class="search-input" placeholder="Cari material daur ulang...">
-              <button type="submit" class="search-btn" aria-label="Cari">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="11" cy="11" r="8"></circle>
-                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+        </footer>
     </div>
-
-    <main>
-      <!-- Hero Section -->
-      <section class="hero">
-        <img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Daur Ulang" class="hero-bg-img"
-          style="background: url('https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?auto=format&fit=crop&q=80&w=800') center/contain no-repeat; filter: drop-shadow(0 20px 30px rgba(0,0,0,0.1));">
-
-        <div class="container relative">
-          <div class="hero-content">
-            <h1 class="hero-title">Bahan Baku Dari Sampah Terpilah</h1>
-            <p class="hero-desc">Platform yang menghubungkan rumah tangga, pengepul, dan industri untuk mengubah sisa konsumsi menjadi bahan baku berkualitas.</p>
-            <a href="#etalase" class="btn-shop">Lihat Etalase</a>
-          </div>
-        </div>
-      </section>
-
-      <!-- Features Section -->
-      <section class="features-section">
-        <div class="container">
-          <div class="features-grid">
-            <div class="feature-card">
-              <div class="feature-icon-container">
-                <svg class="feature-svg svg-pickup" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M42 20H48L56 28V46H50" stroke="var(--color-bright-green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-                  <path d="M12 46H8V18H42V46H38" stroke="var(--color-dark-green)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
-                  <circle cx="18" cy="46" r="6" stroke="var(--color-dark-green)" stroke-width="3" fill="var(--color-surface)" />
-                  <circle cx="44" cy="46" r="6" stroke="var(--color-bright-green-hover)" stroke-width="3" fill="var(--color-surface)" />
-                  <line x1="2" y1="26" x2="6" y2="26" stroke="var(--color-bright-green)" stroke-width="3" stroke-linecap="round" />
-                  <line x1="0" y1="34" x2="4" y2="34" stroke="var(--color-bright-green)" stroke-width="3" stroke-linecap="round" />
-                </svg>
-              </div>
-              <div class="feature-card-content">
-                <h3>Jemput Gratis</h3>
-                <p>Berlaku untuk pengambilan sampah terpilah rumah tangga dengan berat minimum tertentu di area cakupan kami.</p>
-              </div>
-            </div>
-            <div class="feature-card">
-              <div class="feature-icon-container">
-                <svg class="feature-svg svg-payment" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M32 6C32 6 48 10 48 22V38C48 48 32 58 32 58C32 58 16 48 16 38V22C16 10 32 6 32 6Z" stroke="var(--color-dark-green)" stroke-width="3" stroke-linejoin="round" />
-                  <rect x="24" y="22" width="22" height="15" rx="2.5" stroke="var(--color-bright-green)" stroke-width="2.5" fill="none" />
-                  <path d="M24 27H46" stroke="var(--color-bright-green)" stroke-width="2.5" />
-                  <circle cx="28" cy="32" r="1.5" fill="var(--color-bright-green)" />
-                  <circle cx="42" cy="42" r="9" fill="var(--color-surface)" stroke="var(--color-bright-green-hover)" stroke-width="2.5" />
-                  <path d="M39 42L41 44L45 40" stroke="var(--color-bright-green-hover)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </div>
-              <div class="feature-card-content">
-                <h3>Pembayaran Aman</h3>
-                <p>Kami menerima transfer bank, dompet digital, dan sistem rekber untuk transaksi industri partai besar.</p>
-              </div>
-            </div>
-            <div class="feature-card">
-              <div class="feature-icon-container">
-                <svg class="feature-svg svg-quality" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="32" cy="32" r="20" stroke="var(--color-dark-green)" stroke-width="3" fill="none" />
-                  <path d="M32 4L35 12L43 10L41 18L48 20L43 27L48 33L41 35L43 43L35 41L32 49L29 41L21 43L23 35L16 33L21 27L16 20L23 18L21 10L29 12Z" stroke="var(--color-bright-green)" stroke-width="2.5" stroke-linejoin="round" />
-                  <path d="M25 31L30 36L39 27" stroke="var(--color-dark-green)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
-                  <path d="M24 48V58L32 53L40 58V48" stroke="var(--color-bright-green-hover)" stroke-width="3" stroke-linejoin="round" />
-                </svg>
-              </div>
-              <div class="feature-card-content">
-                <h3>Jaminan Kualitas</h3>
-                <p>Bahan baku industri telah melewati proses sortir ketat dengan spesifikasi yang terjamin sesuai standar pabrik.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Showcase Container -->
-      <div id="etalase" class="container">
-        <!-- Lapis 1: Rumah Tangga -->
-        <section class="marketplace-section">
-          <div class="section-header">
-            <div class="section-title-wrap">
-              <h2>Sampah Terpilah</h2>
-              <p>Sisa konsumsi rumah tangga yang telah dipilah siap ambil.</p>
-            </div>
-          </div>
-          
-          <div v-if="sampahProducts.length === 0" class="py-[40px] text-center text-gray-500">
-            Belum ada listing sampah.
-          </div>
-          <div v-else class="product-grid">
-            <article class="product-card" v-for="product in sampahProducts" :key="product.id">
-              <div class="product-img-wrap">
-                <img :src="product.image" :alt="product.title" class="product-img">
-                <span class="badge-type">{{ product.badge }}</span>
-              </div>
-              <div class="product-info">
-                <h3 class="product-title">{{ product.title }}</h3>
-                <div class="product-price">{{ formatRp(product.price) }}</div>
-                <div class="product-weight">{{ product.subtitle }}</div>
-                <div class="product-meta">
-                  <span class="meta-location">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                      <circle cx="12" cy="10" r="3"></circle>
-                    </svg>
-                    Tersedia
-                  </span>
-                  <span class="product-status status-tersedia">Tersedia</span>
-                </div>
-                <Link :href="ctaHref(product)" class="btn-buy">{{ ctaLabel(product) }}</Link>
-              </div>
-            </article>
-          </div>
-          <WhenVisible
-              v-if="pagination.hasMore"
-              always
-              :params="{
-                  only: ['listings', 'pagination'],
-                  data: { page: pagination.page + 1 },
-                  preserveUrl: true,
-              }"
-          >
-              <div class="mt-8 text-center text-gray-500">
-                  Memuat lebih banyak...
-              </div>
-          </WhenVisible>
-        </section>
-
-        <!-- Lapis 2: Pengepul -->
-        <section class="marketplace-section">
-          <div class="section-header">
-            <div class="section-title-wrap">
-              <h2>Bahan Baku Grosir</h2>
-              <p>Dari mitra pengepul siap angkut untuk industri.</p>
-            </div>
-          </div>
-          
-          <div v-if="bahanBakuProducts.length === 0" class="py-[40px] text-center text-gray-500">
-            Belum ada bahan baku tersedia.
-          </div>
-          <div v-else class="product-grid">
-            <article class="product-card" v-for="product in bahanBakuProducts" :key="product.id">
-              <div class="product-img-wrap">
-                <img :src="product.image" :alt="product.title" class="product-img">
-                <span class="badge-type">{{ product.badge }}</span>
-              </div>
-              <div class="product-info">
-                <h3 class="product-title">{{ product.title }}</h3>
-                <div class="product-price">{{ formatRp(product.price) }}</div>
-                <div class="product-weight">{{ product.subtitle }}</div>
-                <div class="product-meta">
-                  <span class="meta-location">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                      <circle cx="12" cy="10" r="3"></circle>
-                    </svg>
-                    Tersedia
-                  </span>
-                  <span class="product-status status-tersedia">Tersedia</span>
-                </div>
-                <Link :href="ctaHref(product)" class="btn-buy">{{ ctaLabel(product) }}</Link>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <!-- Lapis 3: Industri Pengolah -->
-        <section class="marketplace-section">
-          <div class="section-header">
-            <div class="section-title-wrap">
-              <h2>Bahan Baku Jadi</h2>
-              <p>Keluaran industri pengolah siap pakai.</p>
-            </div>
-          </div>
-
-          <div v-if="bahanJadiProducts.length === 0" class="py-[40px] text-center text-gray-500">
-            Belum ada bahan baku jadi.
-          </div>
-          <div v-else class="product-grid">
-            <article class="product-card" v-for="product in bahanJadiProducts" :key="product.id">
-              <div class="product-img-wrap">
-                <img :src="product.image" :alt="product.title" class="product-img">
-                <span class="badge-type">{{ product.badge }}</span>
-              </div>
-              <div class="product-info">
-                <h3 class="product-title">{{ product.title }}</h3>
-                <div class="product-price">{{ formatRp(product.price) }}</div>
-                <div class="product-weight">{{ product.subtitle }}</div>
-                <div class="product-meta">
-                  <span class="meta-location">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                      <circle cx="12" cy="10" r="3"></circle>
-                    </svg>
-                    Tersedia
-                  </span>
-                  <span class="product-status status-tersedia">Tersedia</span>
-                </div>
-                <Link :href="ctaHref(product)" class="btn-buy">{{ ctaLabel(product) }}</Link>
-              </div>
-            </article>
-          </div>
-        </section>
-      </div>
-    </main>
-
-    <footer class="site-footer">
-      <div class="container">
-        <div class="footer-grid">
-          <div class="footer-col">
-            <div class="logo" style="margin-bottom: 20px;">
-              <img src="/logo.png" alt="Daurin Logo" style="height: 32px; width: auto; object-fit: contain;" onerror="this.style.display='none'">
-            </div>
-            <p style="font-size: 14px; color: #cbd5e1; line-height: 1.6;">Platform marketplace daur ulang B2B & B2C terdepan. Menghubungkan rumah tangga, pengepul, dan industri untuk masa depan lebih hijau.</p>
-          </div>
-          <div class="footer-col">
-            <h4>Kategori</h4>
-            <ul>
-              <li><a href="#">Kertas & Kardus</a></li>
-              <li><a href="#">Plastik (PET/HDPE)</a></li>
-              <li><a href="#">Logam & Kaleng</a></li>
-              <li><a href="#">Limbah Elektronik</a></li>
-            </ul>
-          </div>
-          <div class="footer-col">
-            <h4>Informasi</h4>
-            <ul>
-              <li><a href="#">Tentang Kami</a></li>
-              <li><a href="#">Cara Kerja</a></li>
-              <li><a href="#">Pengiriman (Jemput)</a></li>
-              <li><a href="#">Kebijakan Privasi</a></li>
-            </ul>
-          </div>
-          <div class="footer-col">
-            <h4>Hubungi Kami</h4>
-            <ul>
-              <li style="color: #cbd5e1;">Jl. Lingkungan Hijau No. 12, Jakarta</li>
-              <li><a href="#">support@daurin.id</a></li>
-              <li style="color: var(--color-bright-green); font-weight: bold;">(021) 555-0123</li>
-            </ul>
-          </div>
-        </div>
-        <div class="footer-bottom">
-          &copy; 2026 Daurin Marketplace. All rights reserved.
-        </div>
-      </div>
-    </footer>
-  </div>
 </template>
 
 <style scoped>
-.daurin-landing {
-  /* Organic / Green Theme Colors matching reference */
-  --color-dark-green: #0a4226;
-  --color-bright-green: #4ade80;
-  --color-bright-green-hover: #22c55e;
-  --color-text-main: #1f2937;
-  --color-text-muted: #6b7280;
-  --color-bg: #fdfdfd;
-  --color-surface: #ffffff;
-  --color-border: #e5e7eb;
-  --color-status-tersedia: #10b981;
-  --color-status-diambil: #f59e0b;
-  --color-status-terjual: #6b7280;
-  --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+.lp {
+    --green: #16a34a;
+    --green-dark: #15803d;
+    --green-soft: #dcfce7;
+    --ink: #0f172a;
+    --muted: #64748b;
+    --line: #e5e7eb;
+    --bg: #ffffff;
 
-  font-family: var(--font-family);
-  background-color: var(--color-bg);
-  color: var(--color-text-main);
-  line-height: 1.5;
-  font-size: 14px;
-  -webkit-font-smoothing: antialiased;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.55;
+    overflow-x: clip;
 }
 
-.daurin-landing * {
-  box-sizing: border-box;
+.lp * {
+    box-sizing: border-box;
 }
 
-.daurin-landing a {
-  text-decoration: none;
-  color: inherit;
+.lp a {
+    text-decoration: none;
+    color: inherit;
 }
 
-.daurin-landing ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.lp ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
 }
 
-.daurin-landing img {
-  max-width: 100%;
-  display: block;
+.lp img {
+    max-width: 100%;
+    display: block;
 }
 
-.daurin-landing button,
-.daurin-landing input {
-  font-family: inherit;
-  border: none;
-  background: none;
-}
-
-.daurin-landing button {
-  cursor: pointer;
-}
-
-.container {
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-/* Top Bar & Header Wrapper */
-.header-wrapper {
-  background-color: var(--color-dark-green);
-  color: #fff;
-  padding-bottom: 20px;
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.15);
-  transition: transform 0.3s ease;
-  will-change: transform;
-}
-
-.header-wrapper.header-scrolled {
-  transform: translateY(calc(-1 * 45px));
-}
-
-/* Top Bar */
-.top-bar {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 10px 0;
-  font-size: 13px;
-  transition: opacity 0.3s ease;
-  opacity: 1;
-}
-
-.header-wrapper.header-scrolled .top-bar {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.top-bar-inner {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.top-bar-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.top-bar-left .icon {
-  color: var(--color-bright-green);
-}
-
-.top-bar-right {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.top-bar-right select {
-  background: transparent;
-  color: #fff;
-  border: none;
-  outline: none;
-  cursor: pointer;
-}
-
-.top-bar-right select option {
-  color: var(--color-text-main);
-}
-
-.top-icons {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.icon-btn-top {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 36px;
-  border-radius: 50%;
-  transition: background-color 0.2s;
-  position: relative;
-}
-
-.icon-btn-top:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-.badge-count {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  background-color: var(--color-bright-green);
-  color: var(--color-dark-green);
-  font-size: 10px;
-  font-weight: bold;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Main Header */
-.main-header {
-  padding-top: 20px;
-  display: flex;
-  align-items: center;
-  gap: 30px;
-}
-
-.logo {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--color-bright-green);
-  letter-spacing: -0.5px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.logo span {
-  color: #fff;
-}
-
-/* Nav Pill */
-.nav-pill {
-  flex: 1;
-  background-color: #fff;
-  border-radius: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 6px 6px 12px;
-  color: var(--color-text-main);
-}
-
-.nav-left-section {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.btn-categories {
-  background-color: var(--color-bright-green);
-  color: var(--color-dark-green);
-  padding: 10px 20px;
-  border-radius: 30px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  transition: background-color 0.2s;
-}
-
-.btn-categories:hover {
-  background-color: var(--color-bright-green-hover);
-}
-
-.main-nav-links {
-  display: none;
-}
-
-@media (min-width: 992px) {
-  .main-nav-links {
-    display: flex;
-    gap: 24px;
-    font-weight: 600;
-    font-size: 14px;
-  }
-}
-
-.nav-link {
-  color: var(--color-text-main);
-  transition: color 0.2s;
-}
-
-.nav-link.active {
-  color: var(--color-bright-green-hover);
-}
-
-.nav-link:hover {
-  color: var(--color-bright-green-hover);
-}
-
-/* Search Bar in Header */
-.search-wrapper {
-  background-color: #f3f4f6;
-  border-radius: 30px;
-  display: flex;
-  align-items: center;
-  padding: 4px;
-  width: 100%;
-  max-width: 300px;
-}
-
-.search-input {
-  flex: 1;
-  padding: 8px 16px;
-  font-size: 13px;
-  outline: none;
-}
-
-.search-input::placeholder {
-  color: #9ca3af;
-}
-
-.search-btn {
-  background-color: var(--color-bright-green);
-  color: var(--color-dark-green);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background-color 0.2s;
-}
-
-.search-btn:hover {
-  background-color: var(--color-bright-green-hover);
-}
-
-/* Hero Banner */
-.hero {
-  background-color: #f8fafc;
-  background-image: none;
-  position: relative;
-  overflow: hidden;
-  padding: 60px 0;
-}
-
-@media (min-width: 768px) {
-  .hero {
-    padding: 100px 0;
-  }
-}
-
-.hero-bg-img {
-  position: absolute;
-  right: -5%;
-  top: 50%;
-  transform: translateY(-50%);
-  height: 120%;
-  object-fit: contain;
-  opacity: 0.9;
-  pointer-events: none;
-}
-
-@media (max-width: 767px) {
-  .hero-bg-img {
-    opacity: 0.2;
-    right: -20%;
-  }
-}
-
-.hero-content {
-  position: relative;
-  z-index: 10;
-  max-width: 600px;
-}
-
-.hero-title {
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: var(--color-text-main);
-  line-height: 1.2;
-  margin-bottom: 20px;
-  letter-spacing: -1px;
-}
-
-@media (min-width: 768px) {
-  .hero-title {
-    font-size: 3.5rem;
-  }
-}
-
-.hero-desc {
-  font-size: 1rem;
-  color: var(--color-text-muted);
-  margin-bottom: 32px;
-  line-height: 1.6;
-}
-
-.btn-shop {
-  display: inline-flex;
-  background-color: var(--color-surface);
-  color: var(--color-text-main);
-  padding: 14px 32px;
-  border-radius: 30px;
-  font-weight: 700;
-  font-size: 15px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-  transition: all 0.2s;
-}
-
-.btn-shop:hover {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
-  color: var(--color-dark-green);
-}
-
-/* Features Section Redesign */
-.features-section {
-  background: linear-gradient(180deg, #ffffff 0%, #f3f7f5 100%);
-  padding: 80px 0;
-  position: relative;
-  overflow: hidden;
-  border-bottom: 1px solid rgba(10, 66, 38, 0.05);
-}
-
-.features-section::before,
-.features-section::after {
-  content: '';
-  position: absolute;
-  width: 300px;
-  height: 300px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(74, 222, 128, 0.08) 0%, rgba(74, 222, 128, 0) 70%);
-  pointer-events: none;
-  z-index: 1;
-}
-
-.features-section::before {
-  top: -100px;
-  left: -100px;
-}
-
-.features-section::after {
-  bottom: -100px;
-  right: -100px;
-}
-
-.features-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 32px;
-  position: relative;
-  z-index: 2;
-}
-
-@media (min-width: 768px) {
-  .features-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-.feature-card {
-  background-color: var(--color-surface);
-  border: 1px solid rgba(10, 66, 38, 0.06);
-  border-radius: 24px;
-  padding: 40px 32px;
-  box-shadow: 0 10px 30px rgba(10, 66, 38, 0.02);
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 24px;
-  overflow: hidden;
-}
-
-.feature-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 4px;
-  background: linear-gradient(90deg, var(--color-bright-green) 0%, var(--color-bright-green-hover) 100%);
-  border-radius: 0 0 4px 4px;
-  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.feature-card:hover::before {
-  width: 100%;
-}
-
-.feature-card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at top right, rgba(74, 222, 128, 0.03) 0%, transparent 60%);
-  opacity: 0;
-  transition: opacity 0.4s ease;
-  z-index: 0;
-}
-
-.feature-card:hover::after {
-  opacity: 1;
-}
-
-.feature-card:hover {
-  transform: translateY(-8px);
-  border-color: rgba(74, 222, 128, 0.3);
-  box-shadow: 0 20px 40px rgba(10, 66, 38, 0.08);
-}
-
-.feature-icon-container {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-  background-color: rgba(74, 222, 128, 0.12);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  z-index: 1;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.feature-card:hover .feature-icon-container {
-  background-color: var(--color-dark-green);
-  transform: scale(1.05);
-}
-
-.feature-svg {
-  width: 38px;
-  height: 38px;
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.feature-card:hover .feature-svg path,
-.feature-card:hover .feature-svg circle,
-.feature-card:hover .feature-svg rect,
-.feature-card:hover .feature-svg line {
-  stroke: var(--color-bright-green);
-}
-
-.feature-card:hover .feature-svg circle[fill="var(--color-surface)"] {
-  fill: var(--color-dark-green);
-}
-
-@keyframes truckMove {
-  0% { transform: translateX(0); }
-  30% { transform: translateX(-4px); }
-  70% { transform: translateX(4px); }
-  100% { transform: translateX(0); }
-}
-
-.feature-card:hover .svg-pickup {
-  animation: truckMove 0.6s ease-in-out;
-}
-
-@keyframes cardPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.08); }
-  100% { transform: scale(1); }
-}
-
-.feature-card:hover .svg-payment rect {
-  animation: cardPulse 0.8s ease-in-out infinite alternate;
-}
-
-@keyframes sealRotate {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(15deg); }
-}
-
-.feature-card:hover .svg-quality path:nth-child(2) {
-  animation: sealRotate 0.5s ease-in-out forwards;
-}
-
-.feature-card-content {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.feature-card h3 {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--color-dark-green);
-  transition: color 0.3s;
-}
-
-.feature-card p {
-  font-size: 13.5px;
-  color: var(--color-text-muted);
-  line-height: 1.6;
-}
-
-/* Marketplace Section */
-.marketplace-section {
-  padding: 60px 0 20px;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 30px;
-  border-bottom: 2px solid var(--color-border);
-  padding-bottom: 16px;
-}
-
-.section-title-wrap h2 {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--color-text-main);
-  margin-bottom: 8px;
-}
-
-.section-title-wrap p {
-  color: var(--color-text-muted);
-  font-size: 14px;
-}
-
-.view-all {
-  color: var(--color-dark-green);
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.view-all:hover {
-  text-decoration: underline;
-}
-
-/* Product Grid */
-.product-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
-}
-
-@media (min-width: 768px) {
-  .product-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+.lp-container {
+    width: 100%;
+    max-width: 1560px;
+    margin: 0 auto;
+    padding: 0 24px;
 }
 
 @media (min-width: 1024px) {
-  .product-grid {
-    grid-template-columns: repeat(5, 1fr);
-  }
+    .lp-container {
+        padding: 0 56px;
+    }
 }
 
-/* Product Card */
-.product-card {
-  background-color: var(--color-surface);
-  border-radius: 16px;
-  border: 1px solid var(--color-border);
-  overflow: hidden;
-  transition: all 0.3s;
-  display: flex;
-  flex-direction: column;
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 10px 22px;
+    transition: all 0.18s ease;
+    cursor: pointer;
 }
 
-.product-card:hover {
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-  border-color: #d1d5db;
+.btn-primary {
+    background: var(--green);
+    color: #fff !important;
 }
 
-.product-img-wrap {
-  position: relative;
-  padding-top: 100%;
-  background-color: #f3f4f6;
+.btn-primary:hover {
+    background: var(--green-dark);
+    transform: translateY(-1px);
 }
 
-.product-img {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.btn-lg {
+    padding: 15px 34px;
+    font-size: 15px;
 }
 
-.badge-type {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  background-color: var(--color-surface);
-  color: var(--color-dark-green);
-  font-size: 11px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: 20px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+.btn-block {
+    width: 100%;
+    margin-top: 12px;
 }
 
-.product-info {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
+.btn-text {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--ink);
 }
 
-.product-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--color-text-main);
-  margin-bottom: 8px;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  height: 40px;
+.btn-text:hover {
+    color: var(--green-dark);
 }
 
-.product-price {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--color-dark-green);
-  margin-bottom: 4px;
+.link-underline {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    white-space: nowrap;
 }
 
-.product-weight {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  margin-bottom: 12px;
+.link-underline:hover {
+    color: var(--green-dark);
 }
 
-.product-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: auto;
-  padding-top: 12px;
-  border-top: 1px dashed var(--color-border);
+/* Header */
+.lp-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
 }
 
-.meta-location {
-  font-size: 12px;
-  color: var(--color-text-muted);
-  display: flex;
-  align-items: center;
-  gap: 4px;
+.lp-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 76px;
 }
 
-.product-status {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 4px 8px;
-  border-radius: 4px;
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    font-size: 20px;
 }
 
-.status-tersedia {
-  background-color: #dcfce7;
-  color: var(--color-status-tersedia);
+.brand-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--green);
+    color: #fff;
+    font-size: 20px;
 }
 
-.status-diambil {
-  background-color: #fef3c7;
-  color: var(--color-status-diambil);
+.nav-center {
+    display: none;
+    gap: 40px;
+    font-weight: 600;
+    font-size: 15px;
+    color: #334155;
 }
 
-.status-terjual {
-  background-color: #f3f4f6;
-  color: var(--color-status-terjual);
+.nav-center a:hover {
+    color: var(--green-dark);
 }
 
-.btn-buy {
-  margin-top: 12px;
-  display: block;
-  width: 100%;
-  text-align: center;
-  background-color: var(--color-dark-green);
-  color: #fff;
-  padding: 9px 0;
-  border-radius: 10px;
-  font-weight: 700;
-  font-size: 13px;
-  transition: background-color 0.2s, color 0.2s;
+@media (min-width: 900px) {
+    .nav-center {
+        display: flex;
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+    }
 }
 
-.btn-buy:hover {
-  background-color: var(--color-bright-green);
-  color: var(--color-dark-green);
+.nav-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
 }
 
-/* Footer */
-.site-footer {
-  background-color: var(--color-dark-green);
-  color: #fff;
-  padding: 60px 0 20px;
-  margin-top: 60px;
+.menu-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--ink);
 }
 
-.footer-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 40px;
-  margin-bottom: 40px;
+@media (min-width: 900px) {
+    .menu-toggle {
+        display: none;
+    }
+}
+
+.btn-text {
+    display: none;
+}
+
+@media (min-width: 640px) {
+    .btn-text {
+        display: inline-flex;
+    }
+}
+
+.mobile-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 8px;
+    padding-bottom: 16px;
+}
+
+.mobile-menu a {
+    padding: 12px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    color: #334155;
+}
+
+.mobile-menu a:hover {
+    background: #f1f5f9;
+}
+
+@media (min-width: 900px) {
+    .mobile-menu {
+        display: none;
+    }
+}
+
+/* Hero */
+.hero {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 40px;
+    padding-top: 56px;
+    padding-bottom: 56px;
+    align-items: center;
+}
+
+@media (min-width: 900px) {
+    .hero {
+        grid-template-columns: 1fr 1.1fr;
+        gap: 48px;
+        padding-top: 72px;
+        padding-bottom: 72px;
+    }
+}
+
+.hero-title {
+    font-size: clamp(2.4rem, 5vw, 4rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    margin: 0 0 22px;
+}
+
+.hero-desc {
+    font-size: 1.05rem;
+    color: var(--muted);
+    max-width: 30rem;
+    margin: 0 0 32px;
+}
+
+.hero-cta {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+/* Stat card with stacked dark shadow (LKP style) */
+.stat-card {
+    margin-top: 48px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    max-width: 460px;
+    padding: 24px 8px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: 10px 12px 0 0 var(--ink);
+}
+
+@media (max-width: 899px) {
+    .stat-card.desktop-stat {
+        display: none;
+    }
+    .stat-card.mobile-stat {
+        margin-top: 0;
+    }
+}
+
+@media (min-width: 900px) {
+    .stat-card.mobile-stat {
+        display: none;
+    }
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--ink);
+    line-height: 1;
+}
+
+.stat-label {
+    margin-top: 6px;
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+/* Hero art */
+.hero-art {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hero-img {
+    width: 100%;
+    max-width: 760px;
+    height: auto;
+    object-fit: contain;
+}
+
+/* Sections */
+.section {
+    padding-top: 64px;
+    padding-bottom: 8px;
+}
+
+.section-head.center {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.section-head.row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+@media (max-width: 640px) {
+    .section-head.row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+}
+
+.section-head h2 {
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    margin: 0;
+}
+
+.eyebrow {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--green-dark);
+    background: var(--green-soft);
+    padding: 4px 12px;
+    border-radius: 999px;
+    margin-bottom: 14px;
+}
+
+.muted {
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+/* Steps */
+.step-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
 }
 
 @media (min-width: 768px) {
-  .footer-grid {
-    grid-template-columns: 2fr 1fr 1fr 1fr;
-  }
+    .step-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.step-card {
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 30px 26px;
+    background: #fff;
+    transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.step-card:hover {
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.07);
+    transform: translateY(-3px);
+}
+
+.step-num {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--green);
+    color: #fff;
+    font-weight: 800;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 18px;
+}
+
+.step-card h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 8px;
+}
+
+.step-card p {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0;
+}
+
+/* Product grid — kartu besar ala referensi */
+.product-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 22px;
+}
+
+@media (min-width: 640px) {
+    .product-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .product-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (min-width: 1400px) {
+    .product-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+.empty-state {
+    border: 1px dashed var(--line);
+    border-radius: 16px;
+    padding: 48px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.load-more {
+    margin-top: 28px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+/* Footer */
+.lp-footer {
+    margin-top: 80px;
+    background: #0f172a;
+    color: #f8fafc;
+    padding: 72px 0;
+}
+
+.lp-footer .brand {
+    color: #fff;
+}
+
+.footer-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 48px;
+}
+
+@media (min-width: 768px) {
+    .footer-grid {
+        grid-template-columns: 2fr 1.5fr 1fr;
+    }
+}
+
+.footer-brand .muted {
+    margin-top: 16px;
+    max-width: 38ch;
+    color: #cbd5e1;
+}
+
+.footer-copy {
+    margin-top: 32px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #cbd5e1;
 }
 
 .footer-col h4 {
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 20px;
-  color: var(--color-bright-green);
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 24px;
+    color: #fff;
 }
 
 .footer-col ul {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.footer-col a {
-  color: #cbd5e1;
-  transition: color 0.2s;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    color: #cbd5e1;
+    font-size: 14px;
 }
 
 .footer-col a:hover {
-  color: #fff;
+    color: #fff;
 }
 
-.footer-bottom {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-top: 20px;
-  text-align: center;
-  color: #94a3b8;
-  font-size: 13px;
+/* Mitra / partners */
+.partners {
+    padding-top: 56px;
+    padding-bottom: 8px;
+    text-align: center;
+}
+
+.partners-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--ink);
+    margin: 0 0 40px;
+}
+
+.partners-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px 40px;
+}
+
+.partner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.partner-logo {
+    position: relative;
+    height: 48px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.partner-initials {
+    font-weight: 800;
+    font-size: 15px;
+    color: #94a3b8;
+}
+
+.partner-img {
+    height: 100%;
+    width: auto;
+    object-fit: contain;
+}
+
+.partner-name {
+    color: #9ca3af;
+    font-weight: 500;
+    font-size: 1rem;
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .partners {
+        overflow: hidden;
+    }
+    .partners-row {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        gap: 32px;
+        width: max-content;
+        animation: marquee 15s linear infinite;
+    }
+    @keyframes marquee {
+        0% { transform: translateX(100vw); }
+        100% { transform: translateX(-100%); }
+    }
+}
+
+/* CTA */
+.cta-section {
+    padding-top: 64px;
+    padding-bottom: 64px;
+}
+
+.cta-banner {
+    position: relative;
+    border-radius: 24px;
+    overflow: hidden;
+    background-color: #f8fafc;
+    background-image: url('/ctaaset/ctaversimobile.png');
+    background-size: cover;
+    background-position: center;
+    padding: 140px 24px;
+    text-align: center;
+    color: var(--ink);
+}
+
+@media (min-width: 768px) {
+    .cta-banner {
+        background-image: url('/ctaaset/ctaversideskop.png');
+        padding: 180px 40px;
+    }
+}
+
+.cta-title {
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    font-weight: 800;
+    margin: 0 0 16px;
+    line-height: 1.2;
+    color: var(--ink);
+    position: relative;
+    z-index: 10;
+}
+
+.cta-desc {
+    font-size: 1.05rem;
+    margin: 0 auto 32px;
+    max-width: 600px;
+    color: var(--muted);
+    position: relative;
+    z-index: 10;
+}
+
+.cta-btn {
+    background: var(--green);
+    color: #fff !important;
+    padding: 14px 32px;
+    font-size: 16px;
+    position: relative;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
+    border-radius: 999px;
+    font-weight: 700;
+}
+
+.cta-btn:hover {
+    background: var(--green-dark);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(22, 163, 74, 0.3);
+}
+
+/* FAQ */
+.faq-section {
+    max-width: 860px;
+    margin: 0 auto;
+    padding-top: 80px;
+    padding-bottom: 80px;
+}
+
+.faq-head {
+    margin-bottom: 48px;
+}
+
+.faq-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #2d3748;
+    margin-bottom: 12px;
+}
+
+.faq-subtitle {
+    font-size: 1rem;
+    color: #718096;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.faq-item {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.faq-item:first-child {
+    border-top: 1px solid #f0f0f0;
+}
+
+.faq-question {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 0;
+    background: none;
+    border: none;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #3b82f6;
+    cursor: pointer;
+    text-align: left;
+    transition: color 0.2s;
+    font-family: inherit;
+}
+
+.faq-question:hover {
+    color: #2563eb;
+}
+
+.faq-q-text {
+    padding-right: 24px;
+}
+
+.faq-icon {
+    font-size: 1.5rem;
+    font-weight: 400;
+    line-height: 1;
+    color: #3b82f6;
+}
+
+.faq-answer {
+    padding-bottom: 24px;
+    color: #4a5568;
+    font-size: 0.95rem;
+    line-height: 1.6;
 }
 </style>

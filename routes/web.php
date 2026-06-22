@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', [MarketplaceController::class, 'index'])->name('home');
+Route::get('/etalase', [MarketplaceController::class, 'etalase'])->name('etalase');
 
 Route::get('/design-system', fn () => Inertia::render('DesignSystem'))->name('design-system');
 
@@ -24,6 +25,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Lelang — ruang real-time dapat dilihat semua peran terautentikasi.
     Route::get('/lelang/{lelang}', [LelangController::class, 'show'])->name('lelang.show');
+
+    // Marketplace bahan baku jadi (beli harga tetap) — semua peran terautentikasi.
+    Route::get('/beli-bahan-jadi', [BahanJadiController::class, 'marketplace'])->name('bahanjadi.market');
+    Route::post('/beli-bahan-jadi/{bahanJadi}/beli', [BahanJadiController::class, 'beli'])->name('bahanjadi.beli');
 
     // Lelang — aksi menawar khusus industri.
     Route::middleware('role:industri')->group(function () {
